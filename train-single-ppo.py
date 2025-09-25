@@ -1,6 +1,6 @@
+from ray import tune
 from ray.rllib.algorithms.ppo import PPOConfig
 from ray.rllib.core.rl_module.default_model_config import DefaultModelConfig
-import logging
 
 from car_racing_env import CarRacingEnv
 
@@ -17,20 +17,16 @@ config = (
             conv_bias_initializer_kwargs={"dtype": "uint8"},
         ),
     )
-    .env_runners(num_env_runners=1)
+    .env_runners(num_env_runners=1, sample_timeout_s=180)
     .evaluation(evaluation_interval=1, evaluation_num_env_runners=1)
 )
 
-
-# Build the algorithm.
-algo = config.build_algo()
-
-# Train it for 5 iterations ...
-for _ in range(5):
-    logging.info(algo.train())
-
-# ... and evaluate it.
-logging.info(algo.evaluate())
-
-# Release the algo's resources (remote actors, like EnvRunners and Learners).
-algo.stop()
+# Train through Ray Tune.
+results = tune.Tuner(
+    "PPO",
+    tune_config=tune.TuneConfig(
+        reuse_actors=True,
+    ),
+    param_space=config,
+    run_config=tune.RunConfig(stop={"training_iteration": 5}, verbose=1),
+).fit()
