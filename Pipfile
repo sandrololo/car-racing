@@ -5,6 +5,8 @@ name = "pypi"
 
 [packages]
 gymnasium = {extras = ["box2d"], version = "*"}
+ray = {extras = ["rllib"], version = "*"}
+torch = "*"
 
 [dev-packages]
 
