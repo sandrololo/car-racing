@@ -6,7 +6,7 @@ import numpy as np
 
 class CarRacingEnv(gymnasium.Wrapper):
     def __init__(self, *args, **kwargs):
-        self.env = CarRacing(*args, **kwargs)
+        self.env = CarRacing(continuous=True, *args, **kwargs)
         super().__init__(self.env)
         # Convert observation space to float32 and normalized
         self.observation_space = Box(
