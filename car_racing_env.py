@@ -5,20 +5,29 @@ import numpy as np
 
 
 class CarRacingEnv(gymnasium.Wrapper):
-    def __init__(self, *args, **kwargs):
-        self.env = CarRacing(continuous=True, *args, **kwargs)
+    def __init__(self, config=None, *args, **kwargs):
+        if config:
+            total_episode_steps = config.get('total_episode_steps', 1000)
+            lap_complete_percent = config.get('lap_complete_percent', 0.95)
+        self.env = CarRacing(lap_complete_percent=lap_complete_percent, continuous=True, *args, **kwargs)
         super().__init__(self.env)
         # Convert observation space to float32 and normalized
         self.observation_space = Box(
             low=0.0, high=1.0, shape=self.env.observation_space.shape, dtype=np.float32
         )
+        self.total_episode_steps = total_episode_steps
+        self.current_steps = 0
 
     def reset(self, **kwargs):
         obs, info = self.env.reset(**kwargs)
+        self.current_steps = 0
         return self._preprocess_obs(obs), info
 
     def step(self, action):
         obs, reward, terminated, truncated, info = self.env.step(action)
+        self.current_steps += 1
+        if self.current_steps >= self.total_episode_steps:
+            truncated = True
         return self._preprocess_obs(obs), reward, terminated, truncated, info
 
     def _preprocess_obs(self, obs):

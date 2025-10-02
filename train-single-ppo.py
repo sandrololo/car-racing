@@ -6,12 +6,17 @@ from ray.rllib.core.rl_module.default_model_config import DefaultModelConfig
 
 from car_racing_env import CarRacingEnv
 
+NUM_OF_STEPS = 3000
 
 # Configure the algorithm.
 config = (
     PPOConfig()
     .environment(
         CarRacingEnv,
+        env_config={
+            "total_episode_steps": NUM_OF_STEPS,
+            "lap_complete_percent": 0.95
+        },
         render_env=False,
     )
     .rl_module(
@@ -19,9 +24,9 @@ config = (
             conv_bias_initializer_kwargs={"dtype": "uint8"},
         ),
     )
-    .env_runners(num_env_runners=3, sample_timeout_s=720)
+    .env_runners(num_env_runners=3, sample_timeout_s=1000)
     .learners(num_learners=1, num_gpus_per_learner=1)
-    .evaluation(evaluation_interval=1, evaluation_num_env_runners=1, evaluation_sample_timeout_s=720, evaluation_duration=5, evaluation_duration_unit="episodes")
+    .evaluation(evaluation_interval=1, evaluation_num_env_runners=3, evaluation_sample_timeout_s=1000, evaluation_duration=5, evaluation_duration_unit="episodes")
 )
 
 ray.init()
@@ -33,5 +38,5 @@ results = tune.Tuner(
         reuse_actors=True,
     ),
     param_space=config,
-    run_config=tune.RunConfig(stop={"training_iteration": 5}, verbose=1, storage_path=os.path.join(os.getcwd(), "results/single-agent")),
+    run_config=tune.RunConfig(stop={"training_iteration": 50}, verbose=1, storage_path=os.path.join(os.getcwd(), "results/single-agent")),
 ).fit()
