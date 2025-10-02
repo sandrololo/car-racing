@@ -9,7 +9,8 @@ class CarRacingEnv(gymnasium.Wrapper):
         if config:
             total_episode_steps = config.get('total_episode_steps', 1000)
             lap_complete_percent = config.get('lap_complete_percent', 0.95)
-        self.env = CarRacing(lap_complete_percent=lap_complete_percent, continuous=True, *args, **kwargs)
+            render_mode = config.get('render_mode', None)
+        self.env = CarRacing(render_mode=render_mode, lap_complete_percent=lap_complete_percent, continuous=True, *args, **kwargs)
         super().__init__(self.env)
         # Convert observation space to float32 and normalized
         self.observation_space = Box(
