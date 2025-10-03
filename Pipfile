@@ -13,7 +13,7 @@ gymnasium = {extras = ["box2d"], version = "*"}
 ray = {extras = ["rllib"], version = "*"}
 torch = { index = "downloadpytorch"}
 pillow = "*"
-tensorboard = "*"
+wandb = "*"
 
 [dev-packages]
 
