@@ -3,6 +3,7 @@ from ray import tune
 import ray
 from ray.rllib.algorithms.ppo import PPOConfig
 from ray.rllib.core.rl_module.default_model_config import DefaultModelConfig
+from ray.air.integrations.wandb import WandbLoggerCallback, setup_wandb
 
 from car_racing_env import CarRacingEnv
 
@@ -31,7 +32,7 @@ config = (
         use_gae=True,
         train_batch_size=500,
         lr=0.0003,
-        num_sgd_iter=5,
+        num_epochs=5,
     )
     .evaluation(
         evaluation_interval=5,
@@ -52,8 +53,15 @@ results = tune.Tuner(
     ),
     param_space=config,
     run_config=tune.RunConfig(
-        stop={"training_iteration": 50},
+        stop={"training_iteration": 20},
         verbose=1,
         storage_path=os.path.join(os.getcwd(), "results/single-agent"),
+        callbacks=[
+            WandbLoggerCallback(
+                project="car-racing-single-agent",
+                log_config=True,
+                upload_checkpoints=True
+            )
+        ]
     ),
 ).fit()
