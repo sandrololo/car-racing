@@ -13,10 +13,7 @@ config = (
     PPOConfig()
     .environment(
         CarRacingEnv,
-        env_config={
-            "total_episode_steps": NUM_OF_STEPS,
-            "lap_complete_percent": 0.95
-        },
+        env_config={"total_episode_steps": NUM_OF_STEPS, "lap_complete_percent": 0.95},
         render_env=False,
     )
     .rl_module(
@@ -24,9 +21,25 @@ config = (
             conv_bias_initializer_kwargs={"dtype": "uint8"},
         ),
     )
-    .env_runners(num_env_runners=3, sample_timeout_s=1000)
+    .env_runners(
+        num_env_runners=6, sample_timeout_s=1000
+    )  # makes sense to have as many runners and therefore as possible
     .learners(num_learners=1, num_gpus_per_learner=1)
-    .evaluation(evaluation_interval=1, evaluation_num_env_runners=3, evaluation_sample_timeout_s=1000, evaluation_duration=5, evaluation_duration_unit="episodes")
+    # only 1 runner and low interval for evaluation as we have new data every iteration anyways
+    .training(
+        use_critic=True,
+        use_gae=True,
+        train_batch_size=500,
+        lr=0.0003,
+        num_sgd_iter=5,
+    )
+    .evaluation(
+        evaluation_interval=5,
+        evaluation_num_env_runners=1,
+        evaluation_sample_timeout_s=1000,
+        evaluation_duration=5,
+        evaluation_duration_unit="episodes",
+    )
 )
 
 ray.init()
@@ -38,5 +51,9 @@ results = tune.Tuner(
         reuse_actors=True,
     ),
     param_space=config,
-    run_config=tune.RunConfig(stop={"training_iteration": 50}, verbose=1, storage_path=os.path.join(os.getcwd(), "results/single-agent")),
+    run_config=tune.RunConfig(
+        stop={"training_iteration": 50},
+        verbose=1,
+        storage_path=os.path.join(os.getcwd(), "results/single-agent"),
+    ),
 ).fit()
