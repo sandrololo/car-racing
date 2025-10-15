@@ -22,22 +22,24 @@ config = (
         ),
     )
     .env_runners(
-        num_env_runners=6, sample_timeout_s=1200
-    )  # makes sense to have as many runners and therefore as possible
+        num_env_runners=6, sample_timeout_s=1500
+    )  # makes sense to have as many runners and therefore as much data as possible
     .learners(num_learners=1, num_gpus_per_learner=1)
     # only 1 runner and low interval for evaluation as we have new data every iteration anyways
     .training(
         use_critic=True,
         use_gae=True,
-        train_batch_size=1000,
-        lr=0.00003,
-        num_epochs=3,
+        train_batch_size=128, 
+        lr=0.00001,
+        grad_clip=0.3,
+        grad_clip_by="norm",
+        num_epochs=10,
     )
     .evaluation(
         evaluation_interval=5,
         evaluation_num_env_runners=1,
-        evaluation_sample_timeout_s=1200,
-        evaluation_duration=5,
+        evaluation_sample_timeout_s=1500,
+        evaluation_duration=3,
         evaluation_duration_unit="episodes",
     )
 )
@@ -52,7 +54,7 @@ results = tune.Tuner(
     ),
     param_space=config,
     run_config=tune.RunConfig(
-        stop={"training_iteration": 50},
+        stop={"training_iteration": 200},
         verbose=1,
         storage_path=os.path.join(os.getcwd(), "results/single-agent"),
         callbacks=[
