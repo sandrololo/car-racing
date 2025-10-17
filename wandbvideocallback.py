@@ -23,13 +23,13 @@ class WandbVideoCallback(RLlibCallback):
             )
         rl_model = algorithm.get_module()
 
-        env = CarRacingEnv(config={"render_mode": None})
+        env = CarRacingEnv(config={"render_mode": None, "max_timesteps": 5000})
         terminated, truncated = False, False
         total_reward = 0.0
         video_frames = []
         i = 0
         obs, info = env.reset()
-        while not (terminated or truncated) and i < 5000:
+        while not (terminated or truncated):
             obs_dict = {
                 "obs": torch.tensor(np.expand_dims(obs, 0), dtype=torch.float32)
             }

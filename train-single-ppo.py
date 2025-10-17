@@ -22,7 +22,7 @@ config = (
         ),
     )
     .env_runners(
-        num_env_runners=6, num_envs_per_env_runner=4, sample_timeout_s=1500
+        num_env_runners=6, num_envs_per_env_runner=16, sample_timeout_s=1500
     )  # makes sense to have as many runners and therefore as much data as possible
     .learners(num_learners=1, num_gpus_per_learner=1)
     # only 1 runner and low interval for evaluation as we have new data every iteration anyways
@@ -30,9 +30,9 @@ config = (
         gamma=0.95,
         use_critic=True,
         use_gae=True,
-        train_batch_size=512,
+        train_batch_size=256,
         shuffle_batch_per_epoch=True,
-        lr=0.0000001,
+        lr=0.0001,
         grad_clip=0.1,
         kl_coeff=0.1,
         grad_clip_by="norm",
@@ -44,6 +44,12 @@ config = (
         evaluation_sample_timeout_s=3000,
         evaluation_duration=5,
         evaluation_duration_unit="episodes",
+        evaluation_config={
+            "env_config": {
+                "lap_complete_percent": 0.95,
+                "max_timesteps": 5000,
+            }
+        },
     )
     .callbacks(WandbVideoCallback)
 )
