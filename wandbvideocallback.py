@@ -23,7 +23,7 @@ class WandbVideoCallback(RLlibCallback):
             )
         rl_model = algorithm.get_module()
 
-        env = CarRacingEnv(config={"render_mode": None, "max_timesteps": 5000})
+        env = CarRacingEnv(config={"render_mode": None, "max_timesteps": 3000})
         terminated, truncated = False, False
         total_reward = 0.0
         video_frames = []
