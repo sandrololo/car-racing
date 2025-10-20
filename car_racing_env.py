@@ -49,6 +49,54 @@ MAX_SHAPE_DIM = (
 )
 
 
+class FrictionDetector(Box2D.b2.contactListener):
+    def __init__(self, env, lap_complete_percent):
+        Box2D.b2.contactListener.__init__(self)
+        self.env = env
+        self.lap_complete_percent = lap_complete_percent
+
+    def BeginContact(self, contact):
+        self._contact(contact, True)
+
+    def EndContact(self, contact):
+        self._contact(contact, False)
+
+    def _contact(self, contact, begin):
+        tile = None
+        obj = None
+        u1 = contact.fixtureA.body.userData
+        u2 = contact.fixtureB.body.userData
+        if u1 and "road_friction" in u1.__dict__:
+            tile = u1
+            obj = u2
+        if u2 and "road_friction" in u2.__dict__:
+            tile = u2
+            obj = u1
+        if not tile:
+            return
+
+        # inherit tile color from env
+        tile.color[:] = self.env.road_color
+        if not obj or "tiles" not in obj.__dict__:
+            return
+        if begin:
+            obj.tiles.add(tile)
+            if not tile.road_visited:
+                tile.road_visited = True
+                self.env.reward += 1000.0 / len(self.env.track)
+                self.env.tile_visited_count += 1
+
+                # Lap is considered completed if enough % of the track was covered
+                if (
+                    tile.idx == 0
+                    and self.env.tile_visited_count / len(self.env.track)
+                    > self.lap_complete_percent
+                ):
+                    self.env.new_lap = True
+        else:
+            obj.tiles.remove(tile)
+
+
 class CarRacingEnv(gymnasium.Wrapper):
     def __init__(
         self,
@@ -163,22 +211,23 @@ class MultiAgentCarRacingEnv(gymnasium.Env):
     def __init__(self, config: dict = None, *args, **kwargs):
         if config:
             self.num_agents = config.get("num_agents", 4)
-            lap_complete_percent = config.get("lap_complete_percent", 0.95)
+            self.lap_complete_percent = config.get("lap_complete_percent", 0.95)
             self.render_mode = config.get("render_mode", None)
             max_timesteps = config.get("max_timesteps", None)
         else:
             self.num_agents = 4
-            lap_complete_percent = 0.95
+            self.lap_complete_percent = 0.95
             self.render_mode = None
             max_timesteps = None
 
         self.road = None
-        self.cars: list[CarInfo] = [CarInfo(None, None) for _ in range(self.num_agents)]
+        self.cars: list[CarInfo] = []
 
         self.road_color = np.array([102, 102, 102])
         self.bg_color = np.array([102, 204, 102])
         self.grass_color = np.array([102, 230, 102])
 
+        self.contactListener_keepref = FrictionDetector(self, self.lap_complete_percent)
         self.world = Box2D.b2World((0, 0), contactListener=self.contactListener_keepref)
         self.screen: Optional[pygame.Surface] = None
         self.surf: list[pygame.Surface] = []
