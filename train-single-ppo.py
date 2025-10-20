@@ -13,7 +13,12 @@ config = (
     PPOConfig()
     .environment(
         CarRacingEnv,
-        env_config={"lap_complete_percent": 0.95},
+        env_config={
+            "lap_complete_percent": 0.95,
+            "gray_scale": True,
+            "frame_stack": 4,
+            "frame_skip": 4,
+        },
         render_env=False,
     )
     .rl_module(
@@ -21,25 +26,27 @@ config = (
             conv_bias_initializer_kwargs={"dtype": "uint8"},
         ),
     )
+    # don't use more than one num_envs_per_env_runner so that training happens more often
     .env_runners(
-        num_env_runners=6, num_envs_per_env_runner=8, sample_timeout_s=1500
+        num_env_runners=6, sample_timeout_s=1500
     )  # makes sense to have as many runners and therefore as much data as possible
     .learners(num_learners=1, num_gpus_per_learner=1)
     # only 1 runner and low interval for evaluation as we have new data every iteration anyways
     .training(
-        gamma=0.95,
+        gamma=0.99,
         use_critic=True,
         use_gae=True,
         train_batch_size=256,
+        minibatch_size=32,
         shuffle_batch_per_epoch=True,
-        lr=0.0001,
+        lr=0.000001,
         grad_clip=0.1,
-        kl_coeff=0.1,
+        kl_coeff=0.2,
         grad_clip_by="norm",
-        num_epochs=5,
+        num_epochs=3,
     )
     .evaluation(
-        evaluation_interval=200,
+        evaluation_interval=1000,
         evaluation_num_env_runners=1,
         evaluation_sample_timeout_s=3000,
         evaluation_duration=5,
@@ -47,7 +54,10 @@ config = (
         evaluation_config={
             "env_config": {
                 "lap_complete_percent": 0.95,
-                "max_timesteps": 3000,
+                "max_timesteps": 4000,
+                "gray_scale": True,
+                "frame_stack": 4,
+                "frame_skip": 4,
             }
         },
     )
@@ -64,7 +74,7 @@ results = tune.Tuner(
     ),
     param_space=config,
     run_config=tune.RunConfig(
-        stop={"training_iteration": 10000},
+        stop={"training_iteration": 20_000},
         verbose=1,
         storage_path=os.path.join(os.getcwd(), "results/single-agent"),
         callbacks=[
