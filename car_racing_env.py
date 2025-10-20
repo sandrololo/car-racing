@@ -159,7 +159,7 @@ class CarInfo:
         self.car.draw(surf, zoom, trans, draw_particles)
 
 
-class MultiAgentCarRacingEnv(gymnasium.Wrapper):
+class MultiAgentCarRacingEnv(gymnasium.Env):
     def __init__(self, config: dict = None, *args, **kwargs):
         if config:
             self.num_agents = config.get("num_agents", 4)
