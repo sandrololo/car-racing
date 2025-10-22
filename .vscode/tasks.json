@@ -1,0 +1,12 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Train Single Agent PPO on HSLU-workstation",
+            "type": "shell",
+            "command": "docker build -t rllib-car-racing-training . && docker run --gpus=1 --shm-size=9.98gb --env WANDB_API_KEY=\"$WANDB_API_KEY\" --detach --rm rllib-car-racing-training python train-single-ppo.py"
+        }
+    ]
+}
