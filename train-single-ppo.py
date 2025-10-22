@@ -1,4 +1,3 @@
-import os
 from ray import tune
 import ray
 from ray.rllib.algorithms.ppo import PPOConfig
@@ -8,7 +7,7 @@ from ray.air.integrations.wandb import WandbLoggerCallback
 from car_racing_env import CarRacingEnv
 from wandbvideocallback import WandbVideoCallback
 
-TRAIN_BATCH_SIZE = 256
+TRAIN_BATCH_SIZE = 512
 NUM_ITERATIONS = 20_000
 
 # Configure the algorithm.
@@ -40,7 +39,7 @@ config = (
         use_critic=True,
         use_gae=True,
         train_batch_size=TRAIN_BATCH_SIZE,
-        minibatch_size=32,
+        minibatch_size=64,
         shuffle_batch_per_epoch=True,
         lr=[[0, 0.0001], [TRAIN_BATCH_SIZE * NUM_ITERATIONS, 0.000001]],
         grad_clip=0.1,
@@ -79,7 +78,6 @@ results = tune.Tuner(
     run_config=tune.RunConfig(
         stop={"training_iteration": NUM_ITERATIONS},
         verbose=1,
-        storage_path=os.path.join(os.getcwd(), "results/single-agent"),
         callbacks=[
             WandbLoggerCallback(
                 group="car-racing",
