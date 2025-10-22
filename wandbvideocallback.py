@@ -3,9 +3,8 @@ from ray.rllib.algorithms import Algorithm
 import torch
 import numpy as np
 import wandb
-from wandb.sdk.wandb_run import Run as WandbRun
 
-from car_racing_env import CarRacingEnv
+from car_racing_env import CarRacingEnv, STATE_H, STATE_W
 
 
 class WandbVideoCallback(RLlibCallback):
@@ -47,8 +46,12 @@ class WandbVideoCallback(RLlibCallback):
             obs, reward, terminated, truncated, info = env.step(actions)
             total_reward += reward
             if i % 20 == 0:
-                frame = obs.transpose(2, 0, 1)  # HWC to CHW
+                frame = obs[-1].reshape(
+                    1, STATE_H, STATE_W
+                )  # from 4x-stacked grayscale images to a single image
                 frame = (frame * 255).astype(np.uint8)
+                # convert to rgb
+                frame = np.repeat(frame, 3, axis=0)
                 video_frames.append(frame)
             i += 1
 
