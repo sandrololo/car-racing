@@ -5,6 +5,7 @@ import numpy as np
 import wandb
 
 from car_racing_env import CarRacingEnv, STATE_H, STATE_W
+import config
 
 
 class WandbVideoCallback(RLlibCallback):
@@ -25,10 +26,10 @@ class WandbVideoCallback(RLlibCallback):
         env = CarRacingEnv(
             config={
                 "render_mode": None,
-                "max_timesteps": 4000,
-                "gray_scale": True,
-                "frame_stack": 4,
-                "frame_skip": 4,
+                "max_timesteps": config.EVAL_MAX_TIMESTEPS,
+                "gray_scale": config.OBS_GRAY_SCALE,
+                "frame_stack": config.OBS_FRAME_STACK,
+                "frame_skip": config.OBS_FRAME_SKIP,
             }
         )
         terminated, truncated = False, False
