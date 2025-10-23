@@ -10,7 +10,7 @@ import config
 
 
 # Configure the algorithm.
-config = (
+ppo_config = (
     PPOConfig()
     .environment(
         CarRacingEnv,
@@ -79,7 +79,7 @@ results = tune.Tuner(
     tune_config=tune.TuneConfig(
         reuse_actors=True,
     ),
-    param_space=config,
+    param_space=ppo_config,
     run_config=tune.RunConfig(
         stop={"training_iteration": config.TRAIN_NUM_ITERATIONS},
         verbose=1,
