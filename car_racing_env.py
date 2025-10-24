@@ -153,9 +153,9 @@ class CarRacingEnv(gymnasium.Wrapper):
 
 
 class CarInfo:
-    def __init__(self, world, track):
+    def __init__(self):
         # TODO: initialize at different positions for multiple cars
-        self.car = Car(world, *track[0][1:4])
+        self.car = None
         self.reward = 0.0
         self.prev_reward = 0.0
         self.tile_visited_count = 0
@@ -178,12 +178,15 @@ class CarInfo:
         return self.car.hull.angularVelocity
 
     @property
-    def wheel_omega(self, index: int) -> float:
-        return self.car.wheels[index].omega
+    def wheels(self) -> float:
+        return self.car.wheels
 
-    @property
-    def wheel_joint_angle(self, index: int) -> float:
-        return self.car.wheels[index].joint.angle
+    def reset(self, world, track):
+        self.car = Car(world, *track[0][1:4])
+        self.reward = 0.0
+        self.prev_reward = 0.0
+        self.tile_visited_count = 0
+        self.fuel_spent = 0.0
 
     def apply_action(self, action: np.ndarray):
         action = action.astype(np.float64)
@@ -202,12 +205,21 @@ class CarInfo:
         surf: pygame.Surface,
         zoom: float,
         trans: tuple[float, float],
+        angle: float,
         draw_particles: bool = True,
     ):
-        self.car.draw(surf, zoom, trans, draw_particles)
+        self.car.draw(surf, zoom, trans, angle, draw_particles)
 
 
 class MultiAgentCarRacingEnv(gymnasium.Env):
+    metadata = {
+        "render_modes": [
+            "human",
+            "state_pixels",
+        ],
+        "render_fps": FPS,
+    }
+
     def __init__(self, config: dict = None, *args, **kwargs):
         if config:
             self.num_agents = config.get("num_agents", 4)
@@ -221,7 +233,6 @@ class MultiAgentCarRacingEnv(gymnasium.Env):
             max_timesteps = None
 
         self.road = None
-        self.cars: list[CarInfo] = []
 
         self.road_color = np.array([102, 102, 102])
         self.bg_color = np.array([102, 204, 102])
@@ -235,6 +246,8 @@ class MultiAgentCarRacingEnv(gymnasium.Env):
         self.fd_tile = Box2D.b2.fixtureDef(
             shape=Box2D.b2.polygonShape(vertices=[(0, 0), (1, 0), (1, -1), (0, -1)])
         )
+
+        self.cars: list[CarInfo] = [CarInfo() for _ in range(self.num_agents)]
 
         self.observation_space = spaces.Tuple(
             spaces.Box(low=0, high=255, shape=(STATE_H, STATE_W, 3), dtype=np.uint8)
@@ -275,11 +288,7 @@ class MultiAgentCarRacingEnv(gymnasium.Env):
             success = self._create_track()
             if success:
                 break
-            if self.verbose:
-                print(
-                    "retry to generate track (normal if there are not many"
-                    "instances of this message)"
-                )
+            gymnasium.logger.warn("Failed to generate track, retrying...")
         for car in self.cars:
             car.reset(self.world, self.track)
 
@@ -288,7 +297,7 @@ class MultiAgentCarRacingEnv(gymnasium.Env):
         return self.step(None)[0], {}
 
     def step(self, action: Union[list[np.ndarray], None]):
-        assert self.car is not None
+        assert len(self.cars) > 0
         if action is not None:
             for car, action in zip(self.cars, action):
                 car.apply_action(action)
@@ -325,6 +334,16 @@ class MultiAgentCarRacingEnv(gymnasium.Env):
         if self.render_mode == "human":
             self.render()
         return self.state, step_rewards, terminated, truncated, info
+
+    def render(self):
+        if self.render_mode is None:
+            assert self.spec is not None
+            gymnasium.logger.warn(
+                "You are calling render method without specifying any render mode."
+            )
+            return
+        else:
+            return self._render(self.render_mode)
 
     def _render(self, mode: str):
         assert mode in self.metadata["render_modes"]
@@ -366,20 +385,20 @@ class MultiAgentCarRacingEnv(gymnasium.Env):
             self.surf[i] = pygame.transform.flip(self.surf[i], False, True)
 
             # showing stats
-            self._render_indicators(self.surf[i], WINDOW_W, WINDOW_H)
+            self._render_indicators(self.surf[i], car, WINDOW_W, WINDOW_H)
 
             font = pygame.font.Font(pygame.font.get_default_font(), 42)
-            text = font.render("%04i" % self.reward, True, (255, 255, 255), (0, 0, 0))
+            text = font.render("%04i" % car.reward, True, (255, 255, 255), (0, 0, 0))
             text_rect = text.get_rect()
             text_rect.center = (60, WINDOW_H - WINDOW_H * 2.5 / 40.0)
-            self.surf.blit(text, text_rect)
+            self.surf[i].blit(text, text_rect)
 
         if mode == "human":
             pygame.event.pump()
             self.clock.tick(self.metadata["render_fps"])
             assert self.screen is not None
             self.screen.fill(0)
-            self.screen.blit(self.surf, (0, 0))
+            self.screen.blit(self.surf[i], (0, 0))
             pygame.display.flip()
         elif mode == "state_pixels":
             return self._create_image_arrays(self.surf, (STATE_W, STATE_H))
@@ -490,29 +509,29 @@ class MultiAgentCarRacingEnv(gymnasium.Env):
         render_if_min(true_speed, vertical_ind(5, 0.02 * true_speed), (255, 255, 255))
         # ABS sensors
         render_if_min(
-            car.wheel_omega(0),
-            vertical_ind(7, 0.01 * car.wheel_omega(0)),
+            car.wheels[0].omega,
+            vertical_ind(7, 0.01 * car.wheels[0].omega),
             (0, 0, 255),
         )
         render_if_min(
-            car.wheel_omega(1),
-            vertical_ind(8, 0.01 * car.wheel_omega(1)),
+            car.wheels[1].omega,
+            vertical_ind(8, 0.01 * car.wheels[1].omega),
             (0, 0, 255),
         )
         render_if_min(
-            car.wheel_omega(2),
-            vertical_ind(9, 0.01 * car.wheel_omega(2)),
+            car.wheels[2].omega,
+            vertical_ind(9, 0.01 * car.wheels[2].omega),
             (51, 0, 255),
         )
         render_if_min(
-            car.wheel_omega(3),
-            vertical_ind(10, 0.01 * car.wheel_omega(3)),
+            car.wheels[3].omega,
+            vertical_ind(10, 0.01 * car.wheels[3].omega),
             (51, 0, 255),
         )
 
         render_if_min(
-            car.wheel_joint_angle(0),
-            horiz_ind(20, -10.0 * car.wheel_joint_angle(0)),
+            car.wheels[0].joint.angle,
+            horiz_ind(20, -10.0 * car.wheels[0].joint.angle),
             (0, 255, 0),
         )
         render_if_min(
