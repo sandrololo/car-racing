@@ -160,6 +160,7 @@ class CarInfo:
         self.prev_reward = 0.0
         self.tile_visited_count = 0
         self.fuel_spent = 0.0
+        self.new_lap = False
 
     @property
     def position(self) -> tuple[float, float]:
@@ -187,6 +188,7 @@ class CarInfo:
         self.prev_reward = 0.0
         self.tile_visited_count = 0
         self.fuel_spent = 0.0
+        self.new_lap = False
 
     def apply_action(self, action: np.ndarray):
         action = action.astype(np.float64)
@@ -255,7 +257,7 @@ class MultiAgentCarRacingEnv(gymnasium.Env):
         )
         # do nothing, left, right, gas, brake
         self.action_space = spaces.Tuple(
-            spaces.Discrete(5) for _ in range(self.num_agents)
+            [spaces.Discrete(5) for _ in range(self.num_agents)]
         )
 
     def _destroy(self):
@@ -281,7 +283,6 @@ class MultiAgentCarRacingEnv(gymnasium.Env):
         )
         self.world.contactListener = self.world.contactListener_bug_workaround
         self.t = 0.0
-        self.new_lap = False
         self.road_poly = []
 
         while True:
@@ -296,10 +297,10 @@ class MultiAgentCarRacingEnv(gymnasium.Env):
             self.render()
         return self.step(None)[0], {}
 
-    def step(self, action: Union[list[np.ndarray], None]):
+    def step(self, actions: Union[list[np.ndarray], None]):
         assert len(self.cars) > 0
-        if action is not None:
-            for car, action in zip(self.cars, action):
+        if actions is not None:
+            for car, action in zip(self.cars, actions):
                 car.apply_action(action)
 
         for car in self.cars:
@@ -313,7 +314,7 @@ class MultiAgentCarRacingEnv(gymnasium.Env):
         terminated = False
         truncated = False
         info = {"cars": [{} for _ in range(self.num_agents)]}
-        if action is not None:  # First step without action, called from reset()
+        if actions is not None:  # First step without action, called from reset()
             for i, car in enumerate(self.cars):
                 car.reward -= 0.1
                 # We actually don't want to count fuel spent, we want car to be faster.
@@ -321,7 +322,7 @@ class MultiAgentCarRacingEnv(gymnasium.Env):
                 car.fuel_spent = 0.0
                 step_rewards[i] = car.reward - car.prev_reward
                 car.prev_reward = car.reward
-                if car.tile_visited_count == len(self.track) or self.new_lap:
+                if car.tile_visited_count == len(self.track) or car.new_lap:
                     # Termination due to finishing lap
                     terminated = True
                     info["cars"][i]["lap_finished"] = True
