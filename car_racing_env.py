@@ -26,6 +26,7 @@ except ImportError as e:
         'pygame is not installed, run `pip install "gymnasium[box2d]"`'
     ) from e
 
+import config as training_config
 
 STATE_W = 96  # less than Atari 160x192
 STATE_H = 96
@@ -111,6 +112,7 @@ class CarRacingEnv(gymnasium.Wrapper):
             gray_scale = config.get("gray_scale", False)
             frame_stack = config.get("frame_stack", 1)
             frame_skip = config.get("frame_skip", 1)
+            record_video = config.get("record_video", False)
         else:
             lap_complete_percent = 0.95
             render_mode = None
@@ -118,6 +120,7 @@ class CarRacingEnv(gymnasium.Wrapper):
             gray_scale = False
             frame_stack = 1
             frame_skip = 1
+            record_video = False
         self.env = CarRacing(
             render_mode=render_mode,
             lap_complete_percent=lap_complete_percent,
@@ -125,6 +128,16 @@ class CarRacingEnv(gymnasium.Wrapper):
             *args,
             **kwargs,
         )
+        if record_video:
+            self.env = wrappers.RecordVideo(
+                self.env,
+                video_folder="/tmp/videos",
+                video_length=0,
+                episode_trigger=lambda episode_id: episode_id
+                % training_config.EVAL_DURATION
+                == 0,
+                name_prefix="car-racing-env",
+            )
         if max_timesteps is not None:
             self.env = wrappers.TimeLimit(self.env, max_timesteps)
         if gray_scale:

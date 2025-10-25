@@ -1,11 +1,15 @@
+import os
 from ray.rllib.callbacks.callbacks import RLlibCallback
 from ray.rllib.algorithms import Algorithm
-import torch
-import numpy as np
 import wandb
+import glob
 
-from car_racing_env import CarRacingEnv, STATE_H, STATE_W
-import config
+
+video_dir = os.path.join("/tmp", "videos")
+if not os.path.exists(video_dir):
+    os.makedirs(video_dir)
+for f in os.listdir(video_dir):
+    os.remove(os.path.join(video_dir, f))
 
 
 class WandbVideoCallback(RLlibCallback):
@@ -21,47 +25,13 @@ class WandbVideoCallback(RLlibCallback):
                 project="car-racing-single-agent",
                 resume="must",
             )
-        rl_model = algorithm.get_module()
+        video_dir = os.path.join("/tmp", "videos")
+        if not os.path.isdir(video_dir):
+            return
+        files = []
+        files.extend(glob.glob(os.path.join(video_dir, "*.mp4")))
+        if not files:
+            return
+        filename = max(files, key=lambda p: os.path.getmtime(p))
 
-        env = CarRacingEnv(
-            config={
-                "render_mode": None,
-                "max_timesteps": config.EVAL_MAX_TIMESTEPS,
-                "gray_scale": config.OBS_GRAY_SCALE,
-                "frame_stack": config.OBS_FRAME_STACK,
-                "frame_skip": config.OBS_FRAME_SKIP,
-            }
-        )
-        terminated, truncated = False, False
-        total_reward = 0.0
-        video_frames = []
-        i = 0
-        obs, info = env.reset()
-        while not (terminated or truncated):
-            obs_dict = {
-                "obs": torch.tensor(np.expand_dims(obs, 0), dtype=torch.float32)
-            }
-            result = rl_model.forward_inference(obs_dict)
-            actions = result["action_dist_inputs"].numpy()[0]
-
-            obs, reward, terminated, truncated, info = env.step(actions)
-            total_reward += reward
-            if i % 20 == 0:
-                frame = obs[-1].reshape(
-                    1, STATE_H, STATE_W
-                )  # from 4x-stacked grayscale images to a single image
-                frame = (frame * 255).astype(np.uint8)
-                # convert to rgb
-                frame = np.repeat(frame, 3, axis=0)
-                video_frames.append(frame)
-            i += 1
-
-        self.run.log(
-            {
-                "evaluation_video": wandb.Video(
-                    np.array(video_frames), fps=15, format="mp4"
-                )
-            }
-        )
-        wandb.log({"evaluation_video_reward": total_reward})
-        env.close()
+        self.run.log({"evaluation_video": wandb.Video(filename, format="mp4")})

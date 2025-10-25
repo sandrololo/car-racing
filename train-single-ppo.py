@@ -38,7 +38,7 @@ ppo_config = (
         use_critic=True,
         use_gae=True,
         train_batch_size=config.TRAIN_BATCH_SIZE,
-        minibatch_size=64,
+        minibatch_size=config.MINI_BATCH_SIZE,
         shuffle_batch_per_epoch=True,
         lr=[
             [0, config.LR_SCHEDULE_START],
@@ -47,16 +47,13 @@ ppo_config = (
                 config.LR_SCHEDULE_END,
             ],
         ],
-        grad_clip=0.1,
-        kl_coeff=0.2,
-        grad_clip_by="norm",
         num_epochs=3,
     )
     .evaluation(
         evaluation_interval=1000,
         evaluation_num_env_runners=1,
         evaluation_sample_timeout_s=3000,
-        evaluation_duration=5,
+        evaluation_duration=config.EVAL_DURATION,
         evaluation_duration_unit="episodes",
         evaluation_config={
             "env_config": {
@@ -65,6 +62,8 @@ ppo_config = (
                 "gray_scale": config.OBS_GRAY_SCALE,
                 "frame_stack": config.OBS_FRAME_STACK,
                 "frame_skip": config.OBS_FRAME_SKIP,
+                "render_mode": "rgb_array",
+                "record_video": True,
             }
         },
     )
