@@ -1,7 +1,7 @@
 from typing import Optional, Union
 import math
 import numpy as np
-from gymnasium.envs.box2d.car_racing import CarRacing, FrictionDetector
+from gymnasium.envs.box2d.car_racing import CarRacing
 from gymnasium.envs.box2d.car_dynamics import Car
 from gymnasium.error import DependencyNotInstalled
 from gymnasium.spaces import Box
@@ -50,19 +50,28 @@ MAX_SHAPE_DIM = (
 )
 
 
-class FrictionDetector(Box2D.b2.contactListener):
+class FrictionAndCrashDetector(Box2D.b2.contactListener):
     def __init__(self, env, lap_complete_percent):
         Box2D.b2.contactListener.__init__(self)
         self.env = env
         self.lap_complete_percent = lap_complete_percent
 
     def BeginContact(self, contact):
-        self._contact(contact, True)
+        self._crash_contact(contact)
+        self._tile_contact(contact, True)
 
     def EndContact(self, contact):
-        self._contact(contact, False)
+        self._tile_contact(contact, False)
 
-    def _contact(self, contact, begin):
+    def _crash_contact(self, contact):
+        u1 = contact.fixtureA.body.userData
+        u2 = contact.fixtureB.body.userData
+        if u1 and "car_id" in u1.__dict__ and u2 and "car_id" in u2.__dict__:
+            for car in self.env.cars:
+                if car.id == u1.id or car.id == u2.id:
+                    car.reward -= 1000.0
+
+    def _tile_contact(self, contact, begin):
         tile = None
         obj = None
         u1 = contact.fixtureA.body.userData
@@ -259,6 +268,12 @@ class CarInfo:
 
 
 class MultiAgentCarRacingEnv(gymnasium.Env):
+    """
+    Multi-agent version of the CarRacing environment.
+    It has the same mechanics. Each observation is the perspective of a car.
+    The rewards are the same except that collisions between cars are punished with -1000.
+    """
+
     metadata = {
         "render_modes": [
             "human",
@@ -285,7 +300,9 @@ class MultiAgentCarRacingEnv(gymnasium.Env):
         self.bg_color = np.array([102, 204, 102])
         self.grass_color = np.array([102, 230, 102])
 
-        self.contactListener_keepref = FrictionDetector(self, self.lap_complete_percent)
+        self.contactListener_keepref = FrictionAndCrashDetector(
+            self, self.lap_complete_percent
+        )
         self.world = Box2D.b2World((0, 0), contactListener=self.contactListener_keepref)
         self.screen: Optional[pygame.Surface] = None
         self.surf: list[pygame.Surface] = []
@@ -323,7 +340,7 @@ class MultiAgentCarRacingEnv(gymnasium.Env):
     ):
         super().reset(seed=seed)
         self._destroy()
-        self.world.contactListener_bug_workaround = FrictionDetector(
+        self.world.contactListener_bug_workaround = FrictionAndCrashDetector(
             self, self.lap_complete_percent
         )
         self.world.contactListener = self.world.contactListener_bug_workaround
