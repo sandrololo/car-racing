@@ -1,3 +1,4 @@
+import sys
 from typing import Optional, Union
 import math
 import numpy as np
@@ -412,10 +413,6 @@ class MultiAgentCarRacingEnv(gymnasium.Env):
         assert mode in self.metadata["render_modes"]
 
         pygame.font.init()
-        if self.screen is None and mode == "human":
-            pygame.init()
-            pygame.display.init()
-            self.screen = pygame.display.set_mode((WINDOW_W, WINDOW_H))
         if self.clock is None:
             self.clock = pygame.time.Clock()
 
@@ -459,15 +456,41 @@ class MultiAgentCarRacingEnv(gymnasium.Env):
             self.surf[i].blit(reward_text, reward_text_rect)
 
         if mode == "human":
+            if self.screen is None:
+                pygame.init()
+                pygame.display.init()
+                self.screen = pygame.display.set_mode((WINDOW_W, WINDOW_H))
             surf = pygame.Surface((WINDOW_W, WINDOW_H))
+            first_car = self.cars[0]
+            last_car = self.cars[-1]
+            min_x = sys.maxsize
+            min_y = sys.maxsize
+            max_x = -sys.maxsize
+            max_y = -sys.maxsize
+            for car in self.cars:
+                x, y = car.position
+                min_x = min(min_x, x)
+                min_y = min(min_y, y)
+                max_x = max(max_x, x)
+                max_y = max(max_y, y)
+                first_car = (
+                    car
+                    if len(car.tiles_visited) > len(first_car.tiles_visited)
+                    else first_car
+                )
+                last_car = (
+                    car
+                    if len(car.tiles_visited) < len(last_car.tiles_visited)
+                    else last_car
+                )
             # computing transformations
-            angle = -self.cars[0].angle
-            # Animating first second zoom.
-            zoom = 0.1 * SCALE * max(1 - self.t, 0) + ZOOM * SCALE * min(self.t, 1)
-            scroll_x = -(self.cars[0].position[0]) * zoom
-            scroll_y = -(self.cars[0].position[1]) * zoom
+            angle = -(first_car.angle + last_car.angle) / 2
+
+            zoom = max((max_x - min_x), (max_y - min_y)) / 3.5
+            scroll_x = -(max_x + min_x) / 2 * zoom
+            scroll_y = -(max_y + min_y) / 2 * zoom
             trans = pygame.math.Vector2((scroll_x, scroll_y)).rotate_rad(angle)
-            trans = (WINDOW_W * 2 / 3 + trans[0], WINDOW_H / 4 + trans[1])
+            trans = (WINDOW_W * 2 / 3 + trans[0], WINDOW_H / 2 + trans[1])
 
             self._render_road(surf, zoom, trans, angle)
             for i, car in enumerate(self.cars):
