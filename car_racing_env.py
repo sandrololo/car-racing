@@ -84,16 +84,23 @@ class FrictionDetector(Box2D.b2.contactListener):
             obj.tiles.add(tile)
             if not tile.road_visited:
                 tile.road_visited = True
-                self.env.reward += 1000.0 / len(self.env.track)
-                self.env.tile_visited_count += 1
+                for car in self.env.cars:
+                    car.reward += 1000.0 / len(self.env.track)
+                    car.tile_visited_count += 1
+                    if (
+                        tile.idx == 0
+                        and car.tile_visited_count / len(self.env.track)
+                        > self.lap_complete_percent
+                    ):
+                        car.new_lap = True
 
-                # Lap is considered completed if enough % of the track was covered
-                if (
-                    tile.idx == 0
-                    and self.env.tile_visited_count / len(self.env.track)
-                    > self.lap_complete_percent
-                ):
-                    self.env.new_lap = True
+                    # Lap is considered completed if enough % of the track was covered
+                    if (
+                        tile.idx == 0
+                        and car.tile_visited_count / len(self.env.track)
+                        > self.lap_complete_percent
+                    ):
+                        car.new_lap = True
         else:
             obj.tiles.remove(tile)
 
@@ -166,6 +173,8 @@ class CarRacingEnv(gymnasium.Wrapper):
 
 
 class CarInfo:
+    car_count = 0
+
     def __init__(self):
         # TODO: initialize at different positions for multiple cars
         self.car = None
@@ -174,6 +183,8 @@ class CarInfo:
         self.tile_visited_count = 0
         self.fuel_spent = 0.0
         self.new_lap = False
+        self.id = CarInfo.car_count
+        CarInfo.car_count += 1
 
     @property
     def position(self) -> tuple[float, float]:
@@ -196,7 +207,10 @@ class CarInfo:
         return self.car.wheels
 
     def reset(self, world, track):
-        self.car = Car(world, *track[0][1:4])
+        beta = track[0][1]
+        x = track[0][2] + self.id * 3.0
+        y = track[0][3] + self.id * 3.0
+        self.car = Car(world, beta, x, y)
         self.reward = 0.0
         self.prev_reward = 0.0
         self.tile_visited_count = 0
