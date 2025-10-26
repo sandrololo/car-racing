@@ -1,5 +1,5 @@
 import numpy as np
-from gymnasium.envs.box2d.car_racing import CarRacing
+from gymnasium.envs.box2d.car_racing import CarRacing, FPS
 from gymnasium.spaces import Box
 from gymnasium import wrappers
 import gymnasium
@@ -61,9 +61,11 @@ class SingleAgentCarRacingEnv(gymnasium.Wrapper):
         self.observation_space = Box(
             low=0.0, high=1.0, shape=self.env.observation_space.shape, dtype=np.float32
         )
+        self.env.t = FPS
 
     def reset(self, **kwargs):
         obs, info = self.env.reset(**kwargs)
+        self.env.t = FPS
         return self._preprocess_obs(obs), info
 
     def step(self, action):
