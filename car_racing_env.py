@@ -30,7 +30,7 @@ import config as training_config
 
 STATE_W = 96  # less than Atari 160x192
 STATE_H = 96
-WINDOW_W = 1000
+WINDOW_W = 1200
 WINDOW_H = 800
 
 SCALE = 6.0  # Track scale
@@ -467,7 +467,7 @@ class MultiAgentCarRacingEnv(gymnasium.Env):
             scroll_x = -(self.cars[0].position[0]) * zoom
             scroll_y = -(self.cars[0].position[1]) * zoom
             trans = pygame.math.Vector2((scroll_x, scroll_y)).rotate_rad(angle)
-            trans = (WINDOW_W / 2 + trans[0], WINDOW_H / 4 + trans[1])
+            trans = (WINDOW_W * 2 / 3 + trans[0], WINDOW_H / 4 + trans[1])
 
             self._render_road(surf, zoom, trans, angle)
             for i, car in enumerate(self.cars):
@@ -482,10 +482,10 @@ class MultiAgentCarRacingEnv(gymnasium.Env):
                 # showing stats
             surf = pygame.transform.flip(surf, False, True)
             for i, car in enumerate(self.cars):
-                self._render_indicators(i, surf, car, WINDOW_W, WINDOW_H)
+                self._render_indicators(i, surf, car, WINDOW_W / 3, WINDOW_H)
 
                 font = pygame.font.Font(pygame.font.get_default_font(), 21)
-                car_id_text = font.render(f"Car {i}", True, (255, 255, 255), (0, 0, 0))
+                car_id_text = font.render(f"Car {i}", True, (255, 255, 255), None)
                 car_id_text_rect = car_id_text.get_rect()
                 car_id_text_rect.center = (
                     40,
@@ -495,7 +495,7 @@ class MultiAgentCarRacingEnv(gymnasium.Env):
 
                 font = pygame.font.Font(pygame.font.get_default_font(), 42)
                 reward_text = font.render(
-                    "%04i" % car.reward, True, (255, 255, 255), (0, 0, 0)
+                    "%04i" % car.reward, True, (255, 255, 255), None
                 )
                 reward_text_rect = reward_text.get_rect()
                 reward_text_rect.center = (
@@ -589,9 +589,12 @@ class MultiAgentCarRacingEnv(gymnasium.Env):
         s = W / 40.0
         h = H / 40.0
         H -= idx * 5 * h
-        color = (0, 0, 0)
-        polygon = [(W, H), (W, H - 5 * h), (0, H - 5 * h), (0, H)]
-        pygame.draw.polygon(surface, color=color, points=polygon)
+        indicator_box_surf = pygame.Surface((W, 5 * h), pygame.SRCALPHA)
+        alpha = 128 if self.render_mode == "human" else 255
+        indicator_box_surf.fill((100, 100, 100, alpha))
+        polygon = [(W, h * 5), (W, 0), (0, 0), (0, h * 5)]
+        pygame.draw.polygon(indicator_box_surf, (255, 255, 255, alpha), polygon, 1)
+        surface.blit(indicator_box_surf, (0, H - 5 * h))
 
         def vertical_ind(place, val):
             return [
