@@ -1,6 +1,6 @@
-from gymnasium.envs.box2d.car_racing import CarRacing
 import numpy as np
 import pygame
+from environments import SingleAgentCarRacingEnv
 
 if __name__ == "__main__":
     a = np.array([0.0, 0.0, 0.0])
@@ -35,7 +35,7 @@ if __name__ == "__main__":
             if event.type == pygame.QUIT:
                 quit = True
 
-    env = CarRacing(render_mode="human")
+    env = SingleAgentCarRacingEnv({"render_mode": "human"})
 
     quit = False
     while not quit:
