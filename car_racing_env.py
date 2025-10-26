@@ -221,8 +221,8 @@ class CarInfo:
 
     def reset(self, world, track):
         beta = track[0][1]
-        x = track[0][2] + self.id * 3.0
-        y = track[0][3] + self.id * 3.0
+        x = track[0][2] + (-1) ** self.id * 2.5 - self.id * 5.0 * math.sin(beta)
+        y = track[0][3] + self.id * 5.0 * math.cos(beta)
         self.car = Car(world, beta, x, y)
         self.car.hull.userData = self
         self.reward = 0.0
