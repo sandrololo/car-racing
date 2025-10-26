@@ -4,7 +4,7 @@ from ray.rllib.algorithms.ppo import PPOConfig
 from ray.rllib.core.rl_module.default_model_config import DefaultModelConfig
 from ray.air.integrations.wandb import WandbLoggerCallback
 
-from car_racing_env import CarRacingEnv
+from environments import SingleAgentCarRacingEnv
 from wandbvideocallback import WandbVideoCallback
 import config
 
@@ -13,7 +13,7 @@ import config
 ppo_config = (
     PPOConfig()
     .environment(
-        CarRacingEnv,
+        SingleAgentCarRacingEnv,
         env_config={
             "lap_complete_percent": 0.95,
             "gray_scale": config.OBS_GRAY_SCALE,
