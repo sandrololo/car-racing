@@ -413,20 +413,67 @@ class MultiAgentCarRacingEnv(gymnasium.Env):
             self.surf[i] = pygame.transform.flip(self.surf[i], False, True)
 
             # showing stats
-            self._render_indicators(self.surf[i], car, WINDOW_W, WINDOW_H)
+            self._render_indicators(0, self.surf[i], car, WINDOW_W, WINDOW_H)
 
             font = pygame.font.Font(pygame.font.get_default_font(), 42)
-            text = font.render("%04i" % car.reward, True, (255, 255, 255), (0, 0, 0))
-            text_rect = text.get_rect()
-            text_rect.center = (60, WINDOW_H - WINDOW_H * 2.5 / 40.0)
-            self.surf[i].blit(text, text_rect)
+            reward_text = font.render(
+                "%04i" % car.reward, True, (255, 255, 255), (0, 0, 0)
+            )
+            reward_text_rect = reward_text.get_rect()
+            reward_text_rect.center = (60, WINDOW_H - WINDOW_H * 2.5 / 40.0)
+            self.surf[i].blit(reward_text, reward_text_rect)
 
         if mode == "human":
+            surf = pygame.Surface((WINDOW_W, WINDOW_H))
+            # computing transformations
+            angle = -self.cars[0].angle
+            # Animating first second zoom.
+            zoom = 0.1 * SCALE * max(1 - self.t, 0) + ZOOM * SCALE * min(self.t, 1)
+            scroll_x = -(self.cars[0].position[0]) * zoom
+            scroll_y = -(self.cars[0].position[1]) * zoom
+            trans = pygame.math.Vector2((scroll_x, scroll_y)).rotate_rad(angle)
+            trans = (WINDOW_W / 2 + trans[0], WINDOW_H / 4 + trans[1])
+
+            self._render_road(surf, zoom, trans, angle)
+            for i, car in enumerate(self.cars):
+                car.draw(
+                    surf,
+                    zoom,
+                    trans,
+                    angle,
+                    mode not in ["state_pixels_list", "state_pixels"],
+                )
+
+                # showing stats
+            surf = pygame.transform.flip(surf, False, True)
+            for i, car in enumerate(self.cars):
+                self._render_indicators(i, surf, car, WINDOW_W, WINDOW_H)
+
+                font = pygame.font.Font(pygame.font.get_default_font(), 21)
+                car_id_text = font.render(f"Car {i}", True, (255, 255, 255), (0, 0, 0))
+                car_id_text_rect = car_id_text.get_rect()
+                car_id_text_rect.center = (
+                    40,
+                    WINDOW_H - WINDOW_H * 4.2 / 40.0 - i * 5 * (WINDOW_H / 40.0),
+                )
+                surf.blit(car_id_text, car_id_text_rect)
+
+                font = pygame.font.Font(pygame.font.get_default_font(), 42)
+                reward_text = font.render(
+                    "%04i" % car.reward, True, (255, 255, 255), (0, 0, 0)
+                )
+                reward_text_rect = reward_text.get_rect()
+                reward_text_rect.center = (
+                    60,
+                    WINDOW_H - WINDOW_H * 2.5 / 40.0 - i * 5 * (WINDOW_H / 40.0),
+                )
+                surf.blit(reward_text, reward_text_rect)
+
             pygame.event.pump()
             self.clock.tick(self.metadata["render_fps"])
             assert self.screen is not None
             self.screen.fill(0)
-            self.screen.blit(self.surf[i], (0, 0))
+            self.screen.blit(surf, (0, 0))
             pygame.display.flip()
         elif mode == "state_pixels":
             return self._create_image_arrays(self.surf, (STATE_W, STATE_H))
@@ -503,9 +550,10 @@ class MultiAgentCarRacingEnv(gymnasium.Env):
             gfxdraw.aapolygon(surface, poly, color)
             gfxdraw.filled_polygon(surface, poly, color)
 
-    def _render_indicators(self, surface, car: CarInfo, W, H):
+    def _render_indicators(self, idx, surface, car: CarInfo, W, H):
         s = W / 40.0
         h = H / 40.0
+        H -= idx * 5 * h
         color = (0, 0, 0)
         polygon = [(W, H), (W, H - 5 * h), (0, H - 5 * h), (0, H)]
         pygame.draw.polygon(surface, color=color, points=polygon)
