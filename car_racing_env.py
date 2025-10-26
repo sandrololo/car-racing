@@ -3,7 +3,7 @@ import math
 import numpy as np
 from gymnasium.envs.box2d.car_racing import CarRacing, FrictionDetector
 from gymnasium.envs.box2d.car_dynamics import Car
-from gymnasium.error import InvalidAction, DependencyNotInstalled
+from gymnasium.error import DependencyNotInstalled
 from gymnasium.spaces import Box
 from gymnasium import wrappers
 import gymnasium
@@ -78,31 +78,30 @@ class FrictionDetector(Box2D.b2.contactListener):
 
         # inherit tile color from env
         tile.color[:] = self.env.road_color
+        # wheel has 'set' of tiles it is in contact with
         if not obj or "tiles" not in obj.__dict__:
+            # check if the car object reached a new tile to update rewards
+            if "car_id" in obj.__dict__:
+                car_obj = obj
+                for env_car in self.env.cars:
+                    if env_car.id == car_obj.id:
+                        env_car.tiles_visited.add(tile.idx)
+                        env_car.reward += 1000.0 / len(self.env.track)
+                        if (
+                            tile.idx == 0
+                            and len(env_car.tiles_visited) / len(self.env.track)
+                            > self.lap_complete_percent
+                        ):
+                            env_car.new_lap()
             return
+        wheel = obj
+        # so that the wheel can keep track of which tiles it is touching to calculate friction
         if begin:
-            obj.tiles.add(tile)
+            wheel.tiles.add(tile)
             if not tile.road_visited:
                 tile.road_visited = True
-                for car in self.env.cars:
-                    car.reward += 1000.0 / len(self.env.track)
-                    car.tile_visited_count += 1
-                    if (
-                        tile.idx == 0
-                        and car.tile_visited_count / len(self.env.track)
-                        > self.lap_complete_percent
-                    ):
-                        car.new_lap = True
-
-                    # Lap is considered completed if enough % of the track was covered
-                    if (
-                        tile.idx == 0
-                        and car.tile_visited_count / len(self.env.track)
-                        > self.lap_complete_percent
-                    ):
-                        car.new_lap = True
         else:
-            obj.tiles.remove(tile)
+            wheel.tiles.remove(tile)
 
 
 class CarRacingEnv(gymnasium.Wrapper):
@@ -180,9 +179,9 @@ class CarInfo:
         self.car = None
         self.reward = 0.0
         self.prev_reward = 0.0
-        self.tile_visited_count = 0
+        self.tiles_visited = set()
         self.fuel_spent = 0.0
-        self.new_lap = False
+        self.lap_count: int = 0
         self.id = CarInfo.car_count
         CarInfo.car_count += 1
 
@@ -206,16 +205,31 @@ class CarInfo:
     def wheels(self) -> float:
         return self.car.wheels
 
+    @property
+    def __dict__(self) -> dict:
+        return {
+            "car_id": self.id,
+            "position": self.position,
+            "velocity": self.velocity,
+            "angle": self.angle,
+            "angular_velocity": self.angular_velocity,
+            "reward": self.reward,
+            "tiles_visited": self.tiles_visited,
+            "fuel_spent": self.fuel_spent,
+            "lap_count": self.lap_count,
+        }
+
     def reset(self, world, track):
         beta = track[0][1]
         x = track[0][2] + self.id * 3.0
         y = track[0][3] + self.id * 3.0
         self.car = Car(world, beta, x, y)
+        self.car.hull.userData = self
         self.reward = 0.0
         self.prev_reward = 0.0
-        self.tile_visited_count = 0
+        self.tiles_visited.clear()
         self.fuel_spent = 0.0
-        self.new_lap = False
+        self.lap_count = 0
 
     def apply_action(self, action: np.ndarray):
         action = action.astype(np.float64)
@@ -225,6 +239,10 @@ class CarInfo:
 
     def step(self, dt: float):
         self.car.step(dt)
+
+    def new_lap(self):
+        self.lap_count += 1
+        self.tiles_visited.clear()
 
     def destroy(self):
         self.car.destroy()
@@ -349,7 +367,7 @@ class MultiAgentCarRacingEnv(gymnasium.Env):
                 car.fuel_spent = 0.0
                 step_rewards[i] = car.reward - car.prev_reward
                 car.prev_reward = car.reward
-                if car.tile_visited_count == len(self.track) or car.new_lap:
+                if len(car.tiles_visited) == len(self.track) or car.lap_count >= 1:
                     # Termination due to finishing lap
                     terminated = True
                     info["cars"][i]["lap_finished"] = True
