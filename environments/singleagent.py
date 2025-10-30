@@ -56,6 +56,7 @@ class SingleAgentCarRacingEnv(gymnasium.Wrapper):
             self.env = wrappers.FrameStackObservation(self.env, frame_stack)
         if frame_skip > 1:
             self.env = wrappers.MaxAndSkipObservation(self.env, frame_skip)
+        self.env = wrappers.NormalizeReward(self.env)
         super().__init__(self.env)
         # Convert observation space to float32 and normalized
         self.observation_space = Box(

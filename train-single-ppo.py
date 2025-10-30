@@ -19,6 +19,7 @@ ppo_config = (
             "gray_scale": config.OBS_GRAY_SCALE,
             "frame_stack": config.OBS_FRAME_STACK,
             "frame_skip": config.OBS_FRAME_SKIP,
+            "max_timesteps": config.TRAIN_MAX_TIMESTEPS,
         },
         render_env=False,
     )
@@ -48,6 +49,7 @@ ppo_config = (
             ],
         ],
         num_epochs=3,
+        clip_param=0.1,
     )
     .evaluation(
         evaluation_interval=1000,
