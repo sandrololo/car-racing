@@ -27,7 +27,7 @@ except ImportError as e:
 
 STATE_W = 96  # less than Atari 160x192
 STATE_H = 96
-WINDOW_W = 1200
+WINDOW_W = 1600
 WINDOW_H = 800
 
 SCALE = 6.0  # Track scale
@@ -419,7 +419,7 @@ class MultiAgentCarRacingEnv(gymnasium.Env):
             scroll_x = -(max_x + min_x) / 2 * zoom
             scroll_y = -(max_y + min_y) / 2 * zoom
             trans = pygame.math.Vector2((scroll_x, scroll_y)).rotate_rad(angle)
-            trans = (WINDOW_W * 2 / 3 + trans[0], WINDOW_H / 2 + trans[1])
+            trans = (WINDOW_W / 2 + trans[0], WINDOW_H / 2 + trans[1])
 
             self._render_road(surf, zoom, trans, angle)
             for i, car in enumerate(self.cars):
@@ -455,6 +455,23 @@ class MultiAgentCarRacingEnv(gymnasium.Env):
                     WINDOW_H - WINDOW_H * 2.5 / 40.0 - i * 5 * (WINDOW_H / 40.0),
                 )
                 surf.blit(reward_text, reward_text_rect)
+
+                x_start = WINDOW_W * 4 / 6 + i % 2 * WINDOW_W / 6
+                y_start = i // 2 * WINDOW_H / 4
+                surf.blit(
+                    pygame.transform.smoothscale(
+                        self.surf[i], (WINDOW_W / 6, WINDOW_H / 4)
+                    ),
+                    (
+                        x_start,
+                        y_start,
+                    ),
+                )
+                car_id_text_rect.center = (
+                    x_start + 40,
+                    y_start + 20,
+                )
+                surf.blit(car_id_text, car_id_text_rect)
 
             pygame.event.pump()
             self.clock.tick(self.metadata["render_fps"])
