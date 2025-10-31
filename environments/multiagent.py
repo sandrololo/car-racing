@@ -391,32 +391,16 @@ class MultiAgentCarRacingEnv(gymnasium.Env):
                 pygame.display.init()
                 self.screen = pygame.display.set_mode((WINDOW_W, WINDOW_H))
             surf = pygame.Surface((WINDOW_W, WINDOW_H))
-            first_car = self.cars[0]
-            last_car = self.cars[-1]
-            min_x = sys.maxsize
-            min_y = sys.maxsize
-            max_x = -sys.maxsize
-            max_y = -sys.maxsize
-            for car in self.cars:
-                x, y = car.position
-                min_x = min(min_x, x)
-                min_y = min(min_y, y)
-                max_x = max(max_x, x)
-                max_y = max(max_y, y)
-                first_car = (
-                    car
-                    if len(car.tiles_visited) > len(first_car.tiles_visited)
-                    else first_car
-                )
-                last_car = (
-                    car
-                    if len(car.tiles_visited) < len(last_car.tiles_visited)
-                    else last_car
-                )
+            first_car = max(self.cars, key=lambda c: len(c.tiles_visited))
+            last_car = min(self.cars, key=lambda c: len(c.tiles_visited))
+            min_x = min(self.cars, key=lambda c: c.position[0]).position[0]
+            min_y = min(self.cars, key=lambda c: c.position[1]).position[1]
+            max_x = max(self.cars, key=lambda c: c.position[0]).position[0]
+            max_y = max(self.cars, key=lambda c: c.position[1]).position[1]
             # computing transformations
             angle = -(first_car.angle + last_car.angle) / 2
 
-            zoom = max((max_x - min_x), (max_y - min_y)) / 3.5
+            zoom = 550 / max(abs((max_x - min_x)), abs((max_y - min_y)))
             scroll_x = -(max_x + min_x) / 2 * zoom
             scroll_y = -(max_y + min_y) / 2 * zoom
             trans = pygame.math.Vector2((scroll_x, scroll_y)).rotate_rad(angle)
