@@ -235,7 +235,7 @@ class MultiAgentCarRacingEnv(gymnasium.Env):
         )
         self.world = Box2D.b2World((0, 0), contactListener=self.contactListener_keepref)
         self.screen: Optional[pygame.Surface] = None
-        self.surf: list[pygame.Surface] = []
+        self.surfaces: list[pygame.Surface] = []
         self.clock: Optional[pygame.time.Clock] = None
         self.fd_tile = Box2D.b2.fixtureDef(
             shape=Box2D.b2.polygonShape(vertices=[(0, 0), (1, 0), (1, -1), (0, -1)])
@@ -348,33 +348,34 @@ class MultiAgentCarRacingEnv(gymnasium.Env):
         if "t" not in self.__dict__:
             return  # reset() not called yet
 
-        self.surf = [
+        self.surfaces = [
             pygame.Surface((WINDOW_W, WINDOW_H)) for _ in range(self.num_agents)
         ]
 
         assert len(self.cars) > 0
-        for i, car in enumerate(self.cars):
+        for i, surface in enumerate(self.surfaces):
             # computing transformations
-            angle = -car.angle
-            # Animating first second zoom.
-            zoom = 0.1 * SCALE * max(1 - self.t, 0) + ZOOM * SCALE * min(self.t, 1)
-            scroll_x = -(car.position[0]) * zoom
-            scroll_y = -(car.position[1]) * zoom
+            angle = -self.cars[i].angle
+            zoom = ZOOM * SCALE
+            scroll_x = -(self.cars[i].position[0]) * zoom
+            scroll_y = -(self.cars[i].position[1]) * zoom
             trans = pygame.math.Vector2((scroll_x, scroll_y)).rotate_rad(angle)
             trans = (WINDOW_W / 2 + trans[0], WINDOW_H / 4 + trans[1])
 
-            self._render_road(self.surf[i], zoom, trans, angle)
-            car.draw(
-                self.surf[i],
-                zoom,
-                trans,
-                angle,
-                mode not in ["state_pixels_list", "state_pixels"],
-            )
-            self.surf[i] = pygame.transform.flip(self.surf[i], False, True)
+            self._render_road(surface, zoom, trans, angle)
+            for car in self.cars:
+                car.draw(
+                    surface,
+                    zoom,
+                    trans,
+                    angle,
+                    mode not in ["state_pixels_list", "state_pixels"],
+                )
+        for i, car in enumerate(self.cars):
+            self.surfaces[i] = pygame.transform.flip(self.surfaces[i], False, True)
 
             # showing stats
-            self._render_indicators(0, self.surf[i], car, WINDOW_W, WINDOW_H)
+            self._render_indicators(0, self.surfaces[i], car, WINDOW_W, WINDOW_H)
 
             font = pygame.font.Font(pygame.font.get_default_font(), 42)
             reward_text = font.render(
@@ -382,7 +383,7 @@ class MultiAgentCarRacingEnv(gymnasium.Env):
             )
             reward_text_rect = reward_text.get_rect()
             reward_text_rect.center = (60, WINDOW_H - WINDOW_H * 2.5 / 40.0)
-            self.surf[i].blit(reward_text, reward_text_rect)
+            self.surfaces[i].blit(reward_text, reward_text_rect)
 
         if mode == "human":
             if self.screen is None:
@@ -460,7 +461,7 @@ class MultiAgentCarRacingEnv(gymnasium.Env):
                 y_start = i // 2 * WINDOW_H / 4
                 surf.blit(
                     pygame.transform.smoothscale(
-                        self.surf[i], (WINDOW_W / 6, WINDOW_H / 4)
+                        self.surfaces[i], (WINDOW_W / 6, WINDOW_H / 4)
                     ),
                     (
                         x_start,
@@ -480,7 +481,7 @@ class MultiAgentCarRacingEnv(gymnasium.Env):
             self.screen.blit(surf, (0, 0))
             pygame.display.flip()
         elif mode == "state_pixels":
-            return self._create_image_arrays(self.surf, (STATE_W, STATE_H))
+            return self._create_image_arrays(self.surfaces, (STATE_W, STATE_H))
         else:
             return self.isopen
 
