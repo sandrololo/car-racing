@@ -400,7 +400,7 @@ class MultiAgentCarRacingEnv(gymnasium.Env):
             # computing transformations
             angle = -(first_car.angle + last_car.angle) / 2
 
-            zoom = 550 / max(abs((max_x - min_x)), abs((max_y - min_y)))
+            zoom = 550 / max((max_x - min_x), (max_y - min_y))
             scroll_x = -(max_x + min_x) / 2 * zoom
             scroll_y = -(max_y + min_y) / 2 * zoom
             trans = pygame.math.Vector2((scroll_x, scroll_y)).rotate_rad(angle)
@@ -457,6 +457,12 @@ class MultiAgentCarRacingEnv(gymnasium.Env):
                     y_start + 20,
                 )
                 surf.blit(car_id_text, car_id_text_rect)
+
+            track_map_surf = self._create_track_map_surface()
+            surf.blit(
+                track_map_surf,
+                (WINDOW_W / 3 + 20, WINDOW_H - 220),
+            )
 
             pygame.event.pump()
             self.clock.tick(self.metadata["render_fps"])
@@ -795,3 +801,37 @@ class MultiAgentCarRacingEnv(gymnasium.Env):
                 )
         self.track = track
         return True
+
+    def _create_track_map_surface(self):
+        road_poly = self.get_wrapper_attr("road_poly")
+        min_x = min(p[0] for p, c in road_poly)[0]
+        max_x = max(p[0] for p, c in road_poly)[0]
+        min_y = min(p[1] for p, c in road_poly)[0]
+        max_y = max(p[1] for p, c in road_poly)[0]
+        track_map_surf = pygame.Surface(
+            (max_x - min_x + 50, max_y - min_y + 50), pygame.SRCALPHA
+        )
+        for poly, _ in road_poly:
+            poly = [(p[0] - min_x + 25, p[1] - min_y + 25) for p in poly]
+            gfxdraw.filled_polygon(track_map_surf, poly, (255, 255, 255, 255))
+
+        for car in self.cars:
+            pos = (
+                int(car.position[0] - min_x + 25),
+                int(car.position[1] - min_y + 25),
+            )
+            gfxdraw.filled_circle(
+                track_map_surf,
+                pos[0],
+                pos[1],
+                5,
+                (255, 0, 0, 255),
+            )
+        track_map_surf = pygame.transform.flip(track_map_surf, False, True)
+        return pygame.transform.smoothscale(
+            track_map_surf,
+            (
+                200 * track_map_surf.get_height() / track_map_surf.get_width(),
+                200,
+            ),
+        )
