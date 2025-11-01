@@ -38,9 +38,7 @@ if __name__ == "__main__":
             if event.type == pygame.QUIT:
                 quit = True
 
-    env = MultiAgentCarRacingEnv(
-        config={"render_mode": "human", "num_agents": NUM_CARS}
-    )
+    env = MultiAgentCarRacingEnv(config={"render_mode": "human", "num_cars": NUM_CARS})
 
     actions = {}
     quit = False

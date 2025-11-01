@@ -6,6 +6,7 @@ from gymnasium.envs.box2d.car_dynamics import Car
 from gymnasium.error import DependencyNotInstalled
 import gymnasium
 from gymnasium import spaces
+from gymnasium import wrappers
 
 try:
     import Box2D
@@ -23,6 +24,8 @@ except ImportError as e:
     raise DependencyNotInstalled(
         'pygame is not installed, run `pip install "gymnasium[box2d]"`'
     ) from e
+
+import config as training_config
 
 
 STATE_W = 96  # less than Atari 160x192
@@ -218,16 +221,9 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
     }
 
     def __init__(self, config: dict = None, *args, **kwargs):
-        if config:
-            num_agents = config.get("num_agents", 8)
-            self.lap_complete_percent = config.get("lap_complete_percent", 0.95)
-            self.render_mode = config.get("render_mode", None)
-            max_timesteps = config.get("max_timesteps", None)
-        else:
-            num_agents = 8
-            self.lap_complete_percent = 0.95
-            self.render_mode = None
-            max_timesteps = None
+        num_cars = config.get("num_cars", 8)
+        self.lap_complete_percent = config.get("lap_complete_percent", 0.95)
+        self.render_mode = config.get("render_mode", None)
 
         self.road = None
 
@@ -246,9 +242,9 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
             shape=Box2D.b2.polygonShape(vertices=[(0, 0), (1, 0), (1, -1), (0, -1)])
         )
 
-        self.cars: list[CarInfo] = [CarInfo() for _ in range(num_agents)]
+        self.cars: list[CarInfo] = [CarInfo() for _ in range(num_cars)]
 
-        self.possible_agents = [f"car_{i}" for i in range(num_agents)]
+        self.possible_agents = [f"car_{i}" for i in range(num_cars)]
         self.observation_spaces = {
             agent: spaces.Box(
                 low=0, high=255, shape=(STATE_H, STATE_W, 3), dtype=np.uint8

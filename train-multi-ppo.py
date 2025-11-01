@@ -2,15 +2,17 @@ import ray
 from ray import tune
 from ray.rllib.algorithms.ppo import PPOConfig
 from ray.rllib.core.rl_module.default_model_config import DefaultModelConfig
+from ray.air.integrations.wandb import WandbLoggerCallback
 
 from environments import MultiAgentCarRacingEnv
 import config
+
 
 ppo_config = (
     PPOConfig()
     .environment(
         MultiAgentCarRacingEnv,
-        env_config={"lap_complete_percent": 0.95, "num_agents": config.NUM_CARS},
+        env_config={"lap_complete_percent": 0.95, "num_cars": config.NUM_CARS},
         render_env=False,
     )
     .multi_agent(
@@ -53,11 +55,10 @@ ppo_config = (
         evaluation_duration=config.EVAL_DURATION,
         evaluation_duration_unit="episodes",
         evaluation_config={
-            "env_config": {"lap_complete_percent": 0.95, "num_agents": config.NUM_CARS},
+            "env_config": {"lap_complete_percent": 0.95, "num_cars": config.NUM_CARS},
         },
     )
 )
-print(ppo_config.is_multi_agent)
 
 ray.init()
 
@@ -70,5 +71,13 @@ results = tune.Tuner(
     run_config=tune.RunConfig(
         stop={"training_iteration": config.TRAIN_NUM_ITERATIONS},
         verbose=1,
+        callbacks=[
+            WandbLoggerCallback(
+                group="car-racing",
+                project="car-racing-multi-agent",
+                log_config=True,
+                upload_checkpoints=True,
+            )
+        ],
     ),
 ).fit()
