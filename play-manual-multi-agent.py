@@ -42,7 +42,7 @@ if __name__ == "__main__":
         config={"render_mode": "human", "num_agents": NUM_CARS}
     )
 
-    actions = [None for _ in range(NUM_CARS)]
+    actions = {}
     quit = False
     while not quit:
         env.reset()
@@ -51,15 +51,15 @@ if __name__ == "__main__":
         restart = False
         while True:
             register_input()
-            actions[0] = a
+            actions["car_0"] = a
             for i in range(1, NUM_CARS):
-                actions[i] = np.random.rand(5) * 2 - 1
+                actions[f"car_{i}"] = np.random.rand(5) * 2 - 1
             s, r, terminated, truncated, info = env.step(actions)
-            if steps % 200 == 0 or terminated or truncated:
+            if steps % 200 == 0 or terminated["__all__"] or truncated["__all__"]:
                 print(f"step {steps}")
                 for car in env.cars:
                     print(f"reward={car.reward}, pos={car.car.hull.position}")
             steps += 1
-            if terminated or truncated or restart or quit:
+            if terminated["__all__"] or truncated["__all__"] or restart or quit:
                 break
     env.close()

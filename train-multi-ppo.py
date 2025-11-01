@@ -2,26 +2,21 @@ import ray
 from ray import tune
 from ray.rllib.algorithms.ppo import PPOConfig
 from ray.rllib.core.rl_module.default_model_config import DefaultModelConfig
-from ray.air.integrations.wandb import WandbLoggerCallback
 
-from environments import SingleAgentCarRacingEnv
-from wandbvideocallback import WandbVideoCallback
+from environments import MultiAgentCarRacingEnv
 import config
 
-
-# Configure the algorithm.
 ppo_config = (
     PPOConfig()
     .environment(
-        SingleAgentCarRacingEnv,
-        env_config={
-            "lap_complete_percent": 0.95,
-            "gray_scale": config.OBS_GRAY_SCALE,
-            "frame_stack": config.OBS_FRAME_STACK,
-            "frame_skip": config.OBS_FRAME_SKIP,
-            "max_timesteps": config.TRAIN_MAX_TIMESTEPS,
-        },
+        MultiAgentCarRacingEnv,
+        env_config={"lap_complete_percent": 0.95, "num_agents": config.NUM_CARS},
         render_env=False,
+    )
+    .multi_agent(
+        policies={"p0"},
+        # All agents map to the exact same policy.
+        policy_mapping_fn=(lambda aid, *args, **kwargs: "p0"),
     )
     .rl_module(
         model_config=DefaultModelConfig(
@@ -58,23 +53,14 @@ ppo_config = (
         evaluation_duration=config.EVAL_DURATION,
         evaluation_duration_unit="episodes",
         evaluation_config={
-            "env_config": {
-                "lap_complete_percent": 0.95,
-                "max_timesteps": config.EVAL_MAX_TIMESTEPS,
-                "gray_scale": config.OBS_GRAY_SCALE,
-                "frame_stack": config.OBS_FRAME_STACK,
-                "frame_skip": config.OBS_FRAME_SKIP,
-                "render_mode": "rgb_array",
-                "record_video": True,
-            }
+            "env_config": {"lap_complete_percent": 0.95, "num_agents": config.NUM_CARS},
         },
     )
-    .callbacks(WandbVideoCallback)
 )
+print(ppo_config.is_multi_agent)
 
 ray.init()
 
-# Train through Ray Tune.
 results = tune.Tuner(
     "PPO",
     tune_config=tune.TuneConfig(
@@ -84,13 +70,5 @@ results = tune.Tuner(
     run_config=tune.RunConfig(
         stop={"training_iteration": config.TRAIN_NUM_ITERATIONS},
         verbose=1,
-        callbacks=[
-            WandbLoggerCallback(
-                group="car-racing",
-                project="car-racing-single-agent",
-                log_config=True,
-                upload_checkpoints=True,
-            )
-        ],
     ),
 ).fit()

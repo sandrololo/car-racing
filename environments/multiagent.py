@@ -1,7 +1,7 @@
-import sys
 from typing import Optional, Union
 import math
 import numpy as np
+from ray.rllib.env.multi_agent_env import MultiAgentEnv
 from gymnasium.envs.box2d.car_dynamics import Car
 from gymnasium.error import DependencyNotInstalled
 import gymnasium
@@ -118,10 +118,13 @@ class CarInfo:
         self.car = None
         self.reward = 0.0
         self.prev_reward = 0.0
+        self.terminated = False
+        self.truncated = False
         self.tiles_visited = set()
         self.fuel_spent = 0.0
         self.lap_count: int = 0
-        self.id = CarInfo.car_count
+        self.count = CarInfo.car_count
+        self.id = f"car_{self.count}"
         CarInfo.car_count += 1
 
     @property
@@ -160,11 +163,13 @@ class CarInfo:
 
     def reset(self, world, track):
         beta = track[0][1]
-        x = track[0][2] + (-1) ** self.id * 2.5 - self.id * 5.0 * math.sin(beta)
-        y = track[0][3] + self.id * 5.0 * math.cos(beta)
+        x = track[0][2] + (-1) ** self.count * 2.5 - self.count * 5.0 * math.sin(beta)
+        y = track[0][3] + self.count * 5.0 * math.cos(beta)
         self.car = Car(world, beta, x, y)
         self.car.hull.userData = self
         self.reward = 0.0
+        self.terminated = False
+        self.truncated = False
         self.prev_reward = 0.0
         self.tiles_visited.clear()
         self.fuel_spent = 0.0
@@ -197,7 +202,7 @@ class CarInfo:
         self.car.draw(surf, zoom, trans, angle, draw_particles)
 
 
-class MultiAgentCarRacingEnv(gymnasium.Env):
+class MultiAgentCarRacingEnv(MultiAgentEnv):
     """
     Multi-agent version of the CarRacing environment.
     It has the same mechanics. Each observation is the perspective of a car.
@@ -214,12 +219,12 @@ class MultiAgentCarRacingEnv(gymnasium.Env):
 
     def __init__(self, config: dict = None, *args, **kwargs):
         if config:
-            self.num_agents = config.get("num_agents", 4)
+            num_agents = config.get("num_agents", 8)
             self.lap_complete_percent = config.get("lap_complete_percent", 0.95)
             self.render_mode = config.get("render_mode", None)
             max_timesteps = config.get("max_timesteps", None)
         else:
-            self.num_agents = 4
+            num_agents = 8
             self.lap_complete_percent = 0.95
             self.render_mode = None
             max_timesteps = None
@@ -241,16 +246,22 @@ class MultiAgentCarRacingEnv(gymnasium.Env):
             shape=Box2D.b2.polygonShape(vertices=[(0, 0), (1, 0), (1, -1), (0, -1)])
         )
 
-        self.cars: list[CarInfo] = [CarInfo() for _ in range(self.num_agents)]
+        self.cars: list[CarInfo] = [CarInfo() for _ in range(num_agents)]
 
-        self.observation_space = spaces.Tuple(
-            spaces.Box(low=0, high=255, shape=(STATE_H, STATE_W, 3), dtype=np.uint8)
-            for _ in range(self.num_agents)
-        )
-        # do nothing, left, right, gas, brake
-        self.action_space = spaces.Tuple(
-            [spaces.Discrete(5) for _ in range(self.num_agents)]
-        )
+        self.possible_agents = [f"car_{i}" for i in range(num_agents)]
+        self.observation_spaces = {
+            agent: spaces.Box(
+                low=0, high=255, shape=(STATE_H, STATE_W, 3), dtype=np.uint8
+            )
+            for agent in self.possible_agents
+        }
+        self.action_spaces = {
+            agent: spaces.Box(
+                np.array([-1, 0, 0]).astype(np.float32),
+                np.array([+1, +1, +1]).astype(np.float32),
+            )  # steer, gas, brake
+            for agent in self.possible_agents
+        }
 
     def _destroy(self):
         if not self.road:
@@ -287,25 +298,24 @@ class MultiAgentCarRacingEnv(gymnasium.Env):
 
         if self.render_mode == "human":
             self.render()
-        return self.step(None)[0], {}
+        obs, rew, terminated, truncated, info = self.step(None)
+        return obs, info
 
-    def step(self, actions: Union[list[np.ndarray], None]):
+    def step(self, actions: Union[dict, None]):
         assert len(self.cars) > 0
         if actions is not None:
-            for car, action in zip(self.cars, actions):
-                car.apply_action(action)
+            for car in self.cars:
+                car.apply_action(actions[car.id])
 
         for car in self.cars:
             car.step(1.0 / FPS)
         self.world.Step(1.0 / FPS, 6 * 30, 2 * 30)
         self.t += 1.0 / FPS
 
-        self.state = self._render("state_pixels")
+        observations = self._render("state_pixels")
 
-        step_rewards = [0.0 for _ in range(self.num_agents)]
-        terminated = False
-        truncated = False
-        info = {"cars": [{} for _ in range(self.num_agents)]}
+        step_rewards = [0.0 for _ in range(len(self.cars))]
+        info_d = {}
         if actions is not None:  # First step without action, called from reset()
             for i, car in enumerate(self.cars):
                 car.reward -= 0.1
@@ -316,17 +326,24 @@ class MultiAgentCarRacingEnv(gymnasium.Env):
                 car.prev_reward = car.reward
                 if len(car.tiles_visited) == len(self.track) or car.lap_count >= 1:
                     # Termination due to finishing lap
-                    terminated = True
-                    info["cars"][i]["lap_finished"] = True
+                    car.terminated = True
+                    info_d[car.id]["lap_finished"] = True
                 x, y = car.position
                 if abs(x) > PLAYFIELD or abs(y) > PLAYFIELD:
-                    terminated = True
-                    info["cars"][i]["lap_finished"] = False
+                    car.terminated = True
+                    info_d[car.id]["lap_finished"] = False
                     step_rewards[i] = -100
 
         if self.render_mode == "human":
             self.render()
-        return self.state, step_rewards, terminated, truncated, info
+
+        obs_d = {car.id: observations[i] for i, car in enumerate(self.cars)}
+        rew_d = {car.id: step_rewards[i] for i, car in enumerate(self.cars)}
+        terminated_d = {car.id: car.terminated for car in self.cars}
+        truncated_d = {car.id: car.truncated for car in self.cars}
+        terminated_d["__all__"] = all(terminated_d.values())
+        truncated_d["__all__"] = all(truncated_d.values())
+        return obs_d, rew_d, terminated_d, truncated_d, info_d
 
     def render(self):
         if self.render_mode is None:
@@ -349,7 +366,7 @@ class MultiAgentCarRacingEnv(gymnasium.Env):
             return  # reset() not called yet
 
         self.surfaces = [
-            pygame.Surface((WINDOW_W, WINDOW_H)) for _ in range(self.num_agents)
+            pygame.Surface((WINDOW_W, WINDOW_H)) for _ in range(len(self.cars))
         ]
 
         assert len(self.cars) > 0
@@ -484,7 +501,7 @@ class MultiAgentCarRacingEnv(gymnasium.Env):
             image_array = np.transpose(
                 np.array(pygame.surfarray.pixels3d(scaled_screen)), axes=(1, 0, 2)
             )
-            image_arrays.append(image_array)
+            image_arrays.append(image_array.astype(np.float32) / 255.0)
         return image_arrays
 
     def _render_road(self, surface, zoom, translation, angle):
