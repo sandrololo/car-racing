@@ -5,7 +5,7 @@ from ray.rllib.core.rl_module.default_model_config import DefaultModelConfig
 from ray.air.integrations.wandb import WandbLoggerCallback
 
 from environments import SingleAgentCarRacingEnv
-from wandbvideocallback import WandbVideoCallback
+from wandbvideocallback import SingleAgentWandbVideoCallback
 import config
 
 
@@ -38,6 +38,7 @@ ppo_config = (
         gamma=config.TRAIN_GAMMA,
         use_critic=True,
         use_gae=True,
+        lambda_=0.95,
         train_batch_size=config.TRAIN_BATCH_SIZE,
         minibatch_size=config.MINI_BATCH_SIZE,
         shuffle_batch_per_epoch=True,
@@ -48,7 +49,7 @@ ppo_config = (
                 config.LR_SCHEDULE_END,
             ],
         ],
-        num_epochs=2,
+        num_epochs=10,
         clip_param=0.1,
     )
     .evaluation(
@@ -69,7 +70,7 @@ ppo_config = (
             }
         },
     )
-    .callbacks(WandbVideoCallback)
+    .callbacks(SingleAgentWandbVideoCallback)
 )
 
 ray.init()

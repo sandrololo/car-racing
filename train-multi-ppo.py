@@ -3,16 +3,59 @@ from ray import tune
 from ray.rllib.algorithms.ppo import PPOConfig
 from ray.rllib.core.rl_module.default_model_config import DefaultModelConfig
 from ray.air.integrations.wandb import WandbLoggerCallback
+import gymnasium
+from gymnasium import wrappers
 
 from environments import MultiAgentCarRacingEnv
-import config
+from wandbvideocallback import MultiAgentWandbVideoCallback
+import config as training_config
+
+
+class WrappedEnv(gymnasium.Wrapper):
+    def __init__(
+        self,
+        config: dict = None,
+        *args,
+        **kwargs,
+    ):
+        max_timesteps = config.get("max_timesteps", None)
+        gray_scale = config.get("gray_scale", False)
+        frame_stack = config.get("frame_stack", 1)
+        frame_skip = config.get("frame_skip", 1)
+        record_video = config.get("record_video", False)
+        self.env = MultiAgentCarRacingEnv(config, *args, **kwargs)
+        if record_video:
+            self.env = wrappers.RecordVideo(
+                self.env,
+                video_folder="/tmp/multi-agent-videos",
+                video_length=0,
+                episode_trigger=lambda episode_id: episode_id
+                % training_config.EVAL_DURATION
+                == 0,
+                name_prefix="car-racing-env",
+            )
+        """if max_timesteps is not None:
+            env = wrappers.TimeLimit(env, max_timesteps)
+        if gray_scale:
+            env = wrappers.GrayscaleObservation(env)
+        if frame_stack > 1:
+            env = wrappers.FrameStackObservation(env, frame_stack)
+        if frame_skip > 1:
+            env = wrappers.MaxAndSkipObservation(env, frame_skip)"""
+        super().__init__(self.env)
 
 
 ppo_config = (
     PPOConfig()
     .environment(
-        MultiAgentCarRacingEnv,
-        env_config={"lap_complete_percent": 0.95, "num_cars": config.NUM_CARS},
+        WrappedEnv,
+        env_config={
+            "lap_complete_percent": 0.95,
+            "num_cars": training_config.NUM_CARS,
+            "max_timesteps": training_config.TRAIN_MAX_TIMESTEPS,
+            "frame_skip": training_config.OBS_FRAME_SKIP,
+            "record_video": False,
+        },
         render_env=False,
     )
     .multi_agent(
@@ -27,37 +70,45 @@ ppo_config = (
     )
     # don't use more than one num_envs_per_env_runner so that training happens more often
     .env_runners(
-        num_env_runners=6, sample_timeout_s=1500
+        num_env_runners=2, sample_timeout_s=1500
     )  # makes sense to have as many runners and therefore as much data as possible
     .learners(num_learners=1, num_gpus_per_learner=1)
     # only 1 runner and low interval for evaluation as we have new data every iteration anyways
     .training(
-        gamma=config.TRAIN_GAMMA,
+        gamma=training_config.TRAIN_GAMMA,
         use_critic=True,
         use_gae=True,
-        train_batch_size=config.TRAIN_BATCH_SIZE,
-        minibatch_size=config.MINI_BATCH_SIZE,
+        train_batch_size=128,
+        minibatch_size=32,
         shuffle_batch_per_epoch=True,
         lr=[
-            [0, config.LR_SCHEDULE_START],
+            [0, training_config.LR_SCHEDULE_START],
             [
-                config.TRAIN_BATCH_SIZE * config.TRAIN_NUM_ITERATIONS,
-                config.LR_SCHEDULE_END,
+                128 * 2,
+                training_config.LR_SCHEDULE_END,
             ],
         ],
         num_epochs=2,
         clip_param=0.1,
     )
     .evaluation(
-        evaluation_interval=1000,
+        evaluation_interval=1,
         evaluation_num_env_runners=1,
         evaluation_sample_timeout_s=3000,
-        evaluation_duration=config.EVAL_DURATION,
+        evaluation_duration=training_config.EVAL_DURATION,
         evaluation_duration_unit="episodes",
         evaluation_config={
-            "env_config": {"lap_complete_percent": 0.95, "num_cars": config.NUM_CARS},
+            "env_config": {
+                "lap_complete_percent": 0.95,
+                "num_cars": training_config.NUM_CARS,
+                "max_timesteps": training_config.TRAIN_MAX_TIMESTEPS,
+                "frame_skip": training_config.OBS_FRAME_SKIP,
+                "record_video": True,
+                "render_mode": "rgb_array",
+            },
         },
     )
+    # .callbacks(MultiAgentWandbVideoCallback)
 )
 
 ray.init()
@@ -69,7 +120,7 @@ results = tune.Tuner(
     ),
     param_space=ppo_config,
     run_config=tune.RunConfig(
-        stop={"training_iteration": config.TRAIN_NUM_ITERATIONS},
+        stop={"training_iteration": 2},
         verbose=1,
         callbacks=[
             WandbLoggerCallback(
