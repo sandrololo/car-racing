@@ -225,6 +225,8 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
         self.lap_complete_percent = config.get("lap_complete_percent", 0.95)
         self.render_mode = config.get("render_mode", None)
 
+        self.isopen = True
+
         self.road = None
 
         self.road_color = np.array([102, 102, 102])
@@ -314,6 +316,7 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
         info_d = {}
         if actions is not None:  # First step without action, called from reset()
             for i, car in enumerate(self.cars):
+                info_d[car.id] = {}
                 car.reward -= 0.1
                 # We actually don't want to count fuel spent, we want car to be faster.
                 # self.reward -=  10 * self.car.fuel_spent / ENGINE_POWER
@@ -352,8 +355,6 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
             return self._render(self.render_mode)
 
     def _render(self, mode: str):
-        assert mode in self.metadata["render_modes"]
-
         pygame.font.init()
         if self.clock is None:
             self.clock = pygame.time.Clock()
@@ -499,6 +500,12 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
             )
             image_arrays.append(image_array.astype(np.float32) / 255.0)
         return image_arrays
+
+    def close(self):
+        if self.screen is not None:
+            pygame.display.quit()
+            self.isopen = False
+            pygame.quit()
 
     def _render_road(self, surface, zoom, translation, angle):
         bounds = PLAYFIELD
