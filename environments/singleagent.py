@@ -1,3 +1,4 @@
+from typing import Union
 import numpy as np
 from gymnasium.envs.box2d.car_racing import (
     CarRacing,
@@ -9,6 +10,8 @@ from gymnasium.envs.box2d.car_racing import (
     STATE_H,
     SCALE,
     ZOOM,
+    PLAYFIELD,
+    FPS,
 )
 from gymnasium.spaces import Box
 from gymnasium import wrappers
@@ -19,7 +22,6 @@ try:
     # As pygame is necessary for using the environment (reset and step) even without a render mode
     #   therefore, pygame is a necessary import for the environment.
     import pygame
-    from pygame import gfxdraw
 except ImportError as e:
     raise DependencyNotInstalled(
         'pygame is not installed, run `pip install "gymnasium[box2d]"`'
@@ -28,22 +30,61 @@ except ImportError as e:
 import config as training_config
 
 
+def _preprocess_obs(obs):
+    """Convert uint8 observations to normalized float32."""
+    return obs.astype(np.float32) / 255.0
+
+
 class CustomCarRacingEnv(CarRacing):
     def __init__(
         self,
         render_mode=None,
         lap_complete_percent=0.95,
-        continuous=True,
-        *args,
-        **kwargs,
     ):
         super().__init__(
             render_mode=render_mode,
             lap_complete_percent=lap_complete_percent,
-            continuous=continuous,
-            *args,
-            **kwargs,
+            continuous=True,
         )
+
+    def step(self, action: Union[np.ndarray, int]):
+        assert self.car is not None
+        if action is not None:
+            action = action.astype(np.float64)
+            self.car.steer(-action[0])
+            self.car.gas(action[1])
+            self.car.brake(action[2])
+
+        self.car.step(1.0 / FPS)
+        self.world.Step(1.0 / FPS, 6 * 30, 2 * 30)
+        self.t += 1.0 / FPS
+
+        self.state = self._render("state_pixels")
+
+        step_reward = 0
+        terminated = False
+        truncated = False
+        info = {}
+        if action is not None:  # First step without action, called from reset()
+            self.reward -= training_config.REWARD_MINUS_PER_STEP
+            # We actually don't want to count fuel spent, we want car to be faster.
+            # self.reward -=  10 * self.car.fuel_spent / ENGINE_POWER
+            self.car.fuel_spent = 0.0
+            step_reward = self.reward - self.prev_reward
+            self.prev_reward = self.reward
+            if self.tile_visited_count == len(self.track) or self.new_lap:
+                # Termination due to finishing lap
+                terminated = True
+                info["lap_finished"] = True
+            x, y = self.car.hull.position
+            if abs(x) > PLAYFIELD or abs(y) > PLAYFIELD:
+                terminated = True
+                info["lap_finished"] = False
+                step_reward = -100
+
+        if self.render_mode == "human":
+            self.render()
+        return self.state, step_reward, terminated, truncated, info
 
     def _render(self, mode: str):
         """
@@ -113,8 +154,6 @@ class SingleAgentCarRacingEnv(gymnasium.Wrapper):
     def __init__(
         self,
         config: dict = None,
-        *args,
-        **kwargs,
     ):
         if config:
             lap_complete_percent = config.get("lap_complete_percent", 0.95)
@@ -132,13 +171,7 @@ class SingleAgentCarRacingEnv(gymnasium.Wrapper):
             frame_stack = 1
             frame_skip = 1
             record_video = False
-        self.env = CustomCarRacingEnv(
-            render_mode=render_mode,
-            lap_complete_percent=lap_complete_percent,
-            continuous=True,
-            *args,
-            **kwargs,
-        )
+        self.env = CustomCarRacingEnv(render_mode, lap_complete_percent)
         if record_video:
             self.env = wrappers.RecordVideo(
                 self.env,
@@ -160,7 +193,7 @@ class SingleAgentCarRacingEnv(gymnasium.Wrapper):
         self.env = wrappers.NormalizeReward(self.env)
         self.env = wrappers.TransformObservation(
             self.env,
-            self._preprocess_obs,
+            _preprocess_obs,
             Box(
                 low=0.0,
                 high=1.0,
@@ -169,7 +202,3 @@ class SingleAgentCarRacingEnv(gymnasium.Wrapper):
             ),
         )
         super().__init__(self.env)
-
-    def _preprocess_obs(self, obs):
-        """Convert uint8 observations to normalized float32."""
-        return obs.astype(np.float32) / 255.0
