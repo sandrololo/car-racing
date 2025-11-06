@@ -303,7 +303,9 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
         assert len(self.cars) > 0
         if actions is not None:
             for car in self.cars:
-                car.apply_action(actions[car.id])
+                act = actions.get(car.id, None)
+                if act is not None:
+                    car.apply_action(act)
 
         for car in self.cars:
             car.step(1.0 / FPS)
@@ -314,32 +316,37 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
 
         step_rewards = [0.0 for _ in range(len(self.cars))]
         info_d = {}
+        obs_d = {}
+        rew_d = {}
+        terminated_d = {}
+        truncated_d = {}
         if actions is not None:  # First step without action, called from reset()
             for i, car in enumerate(self.cars):
-                info_d[car.id] = {}
-                car.reward -= 0.1
-                # We actually don't want to count fuel spent, we want car to be faster.
-                # self.reward -=  10 * self.car.fuel_spent / ENGINE_POWER
-                car.fuel_spent = 0.0
-                step_rewards[i] = car.reward - car.prev_reward
-                car.prev_reward = car.reward
-                if len(car.tiles_visited) == len(self.track) or car.lap_count >= 1:
-                    # Termination due to finishing lap
-                    car.terminated = True
-                    info_d[car.id]["lap_finished"] = True
-                x, y = car.position
-                if abs(x) > PLAYFIELD or abs(y) > PLAYFIELD:
-                    car.terminated = True
-                    info_d[car.id]["lap_finished"] = False
-                    step_rewards[i] = -100
+                if not car.terminated or car.truncated:
+                    info_d[car.id] = {}
+                    car.reward -= 0.1
+                    # We actually don't want to count fuel spent, we want car to be faster.
+                    # self.reward -=  10 * self.car.fuel_spent / ENGINE_POWER
+                    car.fuel_spent = 0.0
+                    step_rewards[i] = car.reward - car.prev_reward
+                    car.prev_reward = car.reward
+                    if len(car.tiles_visited) == len(self.track) or car.lap_count >= 1:
+                        # Termination due to finishing lap
+                        car.terminated = True
+                        info_d[car.id]["lap_finished"] = True
+                    x, y = car.position
+                    if abs(x) > PLAYFIELD or abs(y) > PLAYFIELD:
+                        car.terminated = True
+                        info_d[car.id]["lap_finished"] = False
+                        step_rewards[i] = -100
+                    obs_d[car.id] = observations[i]
+                    rew_d[car.id] = step_rewards[i]
+                    terminated_d[car.id] = car.terminated
+                    truncated_d[car.id] = car.truncated
 
         if self.render_mode == "human":
             self.render()
 
-        obs_d = {car.id: observations[i] for i, car in enumerate(self.cars)}
-        rew_d = {car.id: step_rewards[i] for i, car in enumerate(self.cars)}
-        terminated_d = {car.id: car.terminated for car in self.cars}
-        truncated_d = {car.id: car.truncated for car in self.cars}
         terminated_d["__all__"] = all(terminated_d.values())
         truncated_d["__all__"] = all(truncated_d.values())
         return obs_d, rew_d, terminated_d, truncated_d, info_d
