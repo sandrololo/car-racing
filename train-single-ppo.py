@@ -49,8 +49,8 @@ ppo_config = (
                 config.LR_SCHEDULE_END,
             ],
         ],
-        num_epochs=5,
-        clip_param=0.2,
+        num_epochs=config.TRAIN_NUM_EPOCHS,
+        clip_param=config.TRAIN_CLIP_PARAM,
     )
     .evaluation(
         evaluation_interval=1000,
