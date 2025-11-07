@@ -190,7 +190,6 @@ class SingleAgentCarRacingEnv(gymnasium.Wrapper):
             self.env = wrappers.FrameStackObservation(self.env, frame_stack)
         if frame_skip > 1:
             self.env = wrappers.MaxAndSkipObservation(self.env, frame_skip)
-        self.env = wrappers.NormalizeReward(self.env)
         self.env = wrappers.TransformObservation(
             self.env,
             _preprocess_obs,

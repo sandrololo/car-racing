@@ -53,7 +53,7 @@ ppo_config = (
         clip_param=config.TRAIN_CLIP_PARAM,
     )
     .evaluation(
-        evaluation_interval=1000,
+        evaluation_interval=config.EVAL_INTERVAL,
         evaluation_num_env_runners=1,
         evaluation_sample_timeout_s=3000,
         evaluation_duration=config.EVAL_DURATION,
