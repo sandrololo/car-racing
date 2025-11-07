@@ -7,6 +7,7 @@ import gymnasium
 from gymnasium import wrappers
 
 from environments import MultiAgentCarRacingEnv
+from environments.multiagentwrappers import TimeLimit, GrayscaleObservation
 from wandbvideocallback import MultiAgentWandbVideoCallback
 import config as training_config
 
@@ -34,11 +35,11 @@ class WrappedEnv(gymnasium.Wrapper):
                 == 0,
                 name_prefix="car-racing-env",
             )
-        """if max_timesteps is not None:
-            env = wrappers.TimeLimit(env, max_timesteps)
+        if max_timesteps is not None:
+            self.env = TimeLimit(self.env, max_timesteps)
         if gray_scale:
-            env = wrappers.GrayscaleObservation(env)
-        if frame_stack > 1:
+            self.env = GrayscaleObservation(self.env)
+        """if frame_stack > 1:
             env = wrappers.FrameStackObservation(env, frame_stack)
         if frame_skip > 1:
             env = wrappers.MaxAndSkipObservation(env, frame_skip)"""
