@@ -1,5 +1,4 @@
-import os
-from typing import Any, Callable, List
+from typing import Any
 from copy import deepcopy
 import numpy as np
 import gymnasium as gym
@@ -7,6 +6,19 @@ from gymnasium import spaces
 from gymnasium.wrappers import TransformObservation, RecordVideo as GymRecordVideo
 from gymnasium.core import ActType, ObsType, RenderFrame, WrapperObsType
 from gymnasium.envs.registration import EnvSpec
+
+
+class RecordVideo(GymRecordVideo):
+    """Records videos of environment episodes using the environment's render function."""
+
+    def _capture_frame(self):
+        assert self.recording, "Cannot capture a frame, recording wasn't started."
+        frame = self.env._render("video")
+        assert isinstance(frame, np.ndarray), (
+            "Expected the type of frame returned by render to be a numpy array, "
+            f"got instead {type(frame)}."
+        )
+        self.recorded_frames.append(frame)
 
 
 class TimeLimit(
@@ -42,13 +54,13 @@ class TimeLimit(
         return observation, reward, terminated, truncated, info
 
     def reset(
-        self, *, seed: int | None = None, options: dict[str, Any] | None = None
+        self, *, seed: int = None, options: dict[str, Any] = None
     ) -> tuple[ObsType, dict]:
         self._elapsed_steps = 0
         return super().reset(seed=seed, options=options)
 
     @property
-    def spec(self) -> EnvSpec | None:
+    def spec(self) -> EnvSpec:
         """Modifies the environment spec to include the `max_episode_steps=self._max_episode_steps`."""
         if self._cached_spec is not None:
             return self._cached_spec

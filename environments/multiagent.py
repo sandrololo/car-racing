@@ -213,10 +213,7 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
     """
 
     metadata = {
-        "render_modes": [
-            "human",
-            "state_pixels",
-        ],
+        "render_modes": ["human", "state_pixels", "video"],
         "render_fps": FPS,
     }
 
@@ -406,8 +403,8 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
             reward_text_rect.center = (60, WINDOW_H - WINDOW_H * 2.5 / 40.0)
             self.surfaces[i].blit(reward_text, reward_text_rect)
 
-        if mode == "human":
-            if self.screen is None:
+        if mode == "human" or mode == "video":
+            if mode == "human" and self.screen is None:
                 pygame.init()
                 pygame.display.init()
                 self.screen = pygame.display.set_mode((WINDOW_W, WINDOW_H))
@@ -485,12 +482,17 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
                 (WINDOW_W / 3 + 20, WINDOW_H - 220),
             )
 
-            pygame.event.pump()
             self.clock.tick(self.metadata["render_fps"])
-            assert self.screen is not None
-            self.screen.fill(0)
-            self.screen.blit(surf, (0, 0))
-            pygame.display.flip()
+            if mode == "human":
+                pygame.event.pump()
+                assert self.screen is not None
+                self.screen.fill(0)
+                self.screen.blit(surf, (0, 0))
+                pygame.display.flip()
+            if mode == "video":
+                return np.transpose(
+                    np.array(pygame.surfarray.pixels3d(surf)), axes=(1, 0, 2)
+                )
         elif mode == "state_pixels":
             return self._create_image_arrays(self.surfaces, (STATE_W, STATE_H))
         else:

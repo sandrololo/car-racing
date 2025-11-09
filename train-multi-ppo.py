@@ -7,7 +7,7 @@ import gymnasium
 from gymnasium import wrappers
 
 from environments import MultiAgentCarRacingEnv
-from environments.multiagentwrappers import TimeLimit, GrayscaleObservation
+from environments.multiagentwrappers import RecordVideo, TimeLimit, GrayscaleObservation
 from wandbvideocallback import MultiAgentWandbVideoCallback
 import config as training_config
 
@@ -26,7 +26,7 @@ class WrappedEnv(gymnasium.Wrapper):
         record_video = config.get("record_video", False)
         self.env = MultiAgentCarRacingEnv(config, *args, **kwargs)
         if record_video:
-            self.env = wrappers.RecordVideo(
+            self.env = RecordVideo(
                 self.env,
                 video_folder="/tmp/multi-agent-videos",
                 video_length=0,
