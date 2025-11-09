@@ -214,7 +214,7 @@ class FrameStackObservation(
         return updated_obs, reward, terminated, truncated, info
 
     def reset(
-        self, *, seed: int | None = None, options: dict[str, Any] | None = None
+        self, *, seed: int = None, options: dict[str, Any] = None
     ) -> tuple[WrapperObsType, dict[str, Any]]:
         obs, info = self.env.reset(seed=seed, options=options)
 
