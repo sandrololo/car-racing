@@ -4,10 +4,14 @@ from ray.rllib.algorithms.ppo import PPOConfig
 from ray.rllib.core.rl_module.default_model_config import DefaultModelConfig
 from ray.air.integrations.wandb import WandbLoggerCallback
 import gymnasium
-from gymnasium import wrappers
 
 from environments import MultiAgentCarRacingEnv
-from environments.multiagentwrappers import RecordVideo, TimeLimit, GrayscaleObservation
+from environments.multiagentwrappers import (
+    RecordVideo,
+    TimeLimit,
+    GrayscaleObservation,
+    FrameStackObservation,
+)
 from wandbvideocallback import MultiAgentWandbVideoCallback
 import config as training_config
 
@@ -22,7 +26,6 @@ class WrappedEnv(gymnasium.Wrapper):
         max_timesteps = config.get("max_timesteps", None)
         gray_scale = config.get("gray_scale", False)
         frame_stack = config.get("frame_stack", 1)
-        frame_skip = config.get("frame_skip", 1)
         record_video = config.get("record_video", False)
         self.env = MultiAgentCarRacingEnv(config, *args, **kwargs)
         if record_video:
@@ -39,10 +42,8 @@ class WrappedEnv(gymnasium.Wrapper):
             self.env = TimeLimit(self.env, max_timesteps)
         if gray_scale:
             self.env = GrayscaleObservation(self.env)
-        """if frame_stack > 1:
-            env = wrappers.FrameStackObservation(env, frame_stack)
-        if frame_skip > 1:
-            env = wrappers.MaxAndSkipObservation(env, frame_skip)"""
+        if frame_stack > 1:
+            self.env = FrameStackObservation(self.env, frame_stack)
         super().__init__(self.env)
 
 
@@ -71,7 +72,7 @@ ppo_config = (
     )
     # don't use more than one num_envs_per_env_runner so that training happens more often
     .env_runners(
-        num_env_runners=2, sample_timeout_s=1500
+        num_env_runners=6, sample_timeout_s=1500, rollout_fragment_length=100
     )  # makes sense to have as many runners and therefore as much data as possible
     .learners(num_learners=1, num_gpus_per_learner=1)
     # only 1 runner and low interval for evaluation as we have new data every iteration anyways
@@ -79,13 +80,13 @@ ppo_config = (
         gamma=training_config.TRAIN_GAMMA,
         use_critic=True,
         use_gae=True,
-        train_batch_size=128,
-        minibatch_size=32,
+        train_batch_size=600,
+        minibatch_size=training_config.MINI_BATCH_SIZE,
         shuffle_batch_per_epoch=True,
         lr=[
             [0, training_config.LR_SCHEDULE_START],
             [
-                128 * 2,
+                training_config.TRAIN_BATCH_SIZE * training_config.TRAIN_NUM_ITERATIONS,
                 training_config.LR_SCHEDULE_END,
             ],
         ],
@@ -93,7 +94,7 @@ ppo_config = (
         clip_param=0.1,
     )
     .evaluation(
-        evaluation_interval=1,
+        evaluation_interval=10,
         evaluation_num_env_runners=1,
         evaluation_sample_timeout_s=3000,
         evaluation_duration=training_config.EVAL_DURATION,
@@ -109,7 +110,7 @@ ppo_config = (
             },
         },
     )
-    # .callbacks(MultiAgentWandbVideoCallback)
+    .callbacks(MultiAgentWandbVideoCallback)
 )
 
 ray.init()
@@ -121,7 +122,7 @@ results = tune.Tuner(
     ),
     param_space=ppo_config,
     run_config=tune.RunConfig(
-        stop={"training_iteration": 2},
+        stop={"training_iteration": 50},
         verbose=1,
         callbacks=[
             WandbLoggerCallback(
