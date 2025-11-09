@@ -1,11 +1,14 @@
-from typing import Any
+from collections import deque
+from typing import Any, Final, SupportsFloat
 from copy import deepcopy
 import numpy as np
 import gymnasium as gym
 from gymnasium import spaces
 from gymnasium.wrappers import TransformObservation, RecordVideo as GymRecordVideo
-from gymnasium.core import ActType, ObsType, RenderFrame, WrapperObsType
+from gymnasium.core import ActType, ObsType, WrapperObsType, WrapperActType
 from gymnasium.envs.registration import EnvSpec
+from gymnasium.vector.utils import batch_space, concatenate, create_empty_array
+from gymnasium.wrappers.utils import create_zero_array
 
 
 class RecordVideo(GymRecordVideo):
@@ -121,3 +124,115 @@ class GrayscaleObservation(
             func=create_grayscale_observation,
             observation_space=new_observation_space,
         )
+
+
+class FrameStackObservation(
+    gym.Wrapper[WrapperObsType, ActType, ObsType, ActType],
+    gym.utils.RecordConstructorArgs,
+):
+    """Stacks the observations from the last ``N`` time steps in a rolling manner.
+
+    For example, if the number of stacks is 4, then the returned observation contains
+    the most recent 4 observations. For environment 'Pendulum-v1', the original observation
+    is an array with shape [3], so if we stack 4 observations, the processed observation
+    has shape [4, 3].
+    """
+
+    def __init__(self, env: gym.Env[ObsType, ActType], stack_size: int):
+        """Observation wrapper that stacks the observations in a rolling manner.
+
+        Args:
+            env: The environment to apply the wrapper
+            stack_size: The number of frames to stack.
+        """
+        gym.utils.RecordConstructorArgs.__init__(self, stack_size=stack_size)
+        gym.Wrapper.__init__(self, env)
+
+        if not np.issubdtype(type(stack_size), np.integer):
+            raise TypeError(
+                f"The stack_size is expected to be an integer, actual type: {type(stack_size)}"
+            )
+        if not 0 < stack_size:
+            raise ValueError(
+                f"The stack_size needs to be greater than zero, actual value: {stack_size}"
+            )
+        self.padding_value: ObsType = {
+            key: create_zero_array(value)
+            for key, value in env.observation_space.spaces.items()
+        }
+
+        self.observation_spaces = {
+            key: spaces.Box(
+                low=0, high=255, shape=(stack_size, *value.shape), dtype=np.uint8
+            )
+            for key, value in env.observation_space.spaces.items()
+        }
+        self.stack_size: Final[int] = stack_size
+
+        self.obs_queue = {
+            key: deque(
+                [self.padding_value[key] for _ in range(self.stack_size)],
+                maxlen=self.stack_size,
+            )
+            for key in env.observation_space.spaces.keys()
+        }
+        self.stacked_obs = {
+            key: create_empty_array(
+                batch_space(
+                    env.observation_space.spaces[key],
+                    (self.stack_size,),
+                )
+            )
+            for key in env.observation_space.spaces.keys()
+        }
+
+    def step(
+        self, action: WrapperActType
+    ) -> tuple[WrapperObsType, SupportsFloat, bool, bool, dict[str, Any]]:
+        """Steps through the environment, appending the observation to the frame buffer.
+
+        Args:
+            action: The action to step through the environment with
+
+        Returns:
+            Stacked observations, reward, terminated, truncated, and info from the environment
+        """
+        obs, reward, terminated, truncated, info = self.env.step(action)
+        for key in obs.keys():
+            self.obs_queue[key].append(obs[key])
+
+        updated_obs = {
+            key: deepcopy(
+                concatenate(
+                    self.env.observation_space.spaces[key],
+                    self.obs_queue[key],
+                    self.stacked_obs[key],
+                )
+            )
+            for key in self.env.observation_space.spaces.keys()
+        }
+        return updated_obs, reward, terminated, truncated, info
+
+    def reset(
+        self, *, seed: int | None = None, options: dict[str, Any] | None = None
+    ) -> tuple[WrapperObsType, dict[str, Any]]:
+        obs, info = self.env.reset(seed=seed, options=options)
+
+        self.padding_value = obs
+        for _ in range(self.stack_size - 1):
+            for key in obs.keys():
+                self.obs_queue[key].append(self.padding_value[key])
+        for key in obs.keys():
+            self.obs_queue[key].append(obs[key])
+
+        updated_obs = {
+            key: deepcopy(
+                concatenate(
+                    self.env.observation_space.spaces[key],
+                    self.obs_queue[key],
+                    self.stacked_obs[key],
+                )
+            )
+            for key in self.env.observation_space.spaces.keys()
+        }
+        return updated_obs, info
