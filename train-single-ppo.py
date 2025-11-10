@@ -19,6 +19,7 @@ ppo_config = (
             "gray_scale": config.OBS_GRAY_SCALE,
             "frame_stack": config.OBS_FRAME_STACK,
             "frame_skip": config.OBS_FRAME_SKIP,
+            "normalize_rewards": config.NORMALIZE_REWARDS,
             "max_timesteps": config.TRAIN_MAX_TIMESTEPS,
         },
         render_env=False,
@@ -30,7 +31,7 @@ ppo_config = (
     )
     # don't use more than one num_envs_per_env_runner so that training happens more often
     .env_runners(
-        num_env_runners=6, sample_timeout_s=1500
+        num_env_runners=6, sample_timeout_s=1500, rollout_fragment_length=100
     )  # makes sense to have as many runners and therefore as much data as possible
     .learners(num_learners=1, num_gpus_per_learner=1)
     # only 1 runner and low interval for evaluation as we have new data every iteration anyways
@@ -39,7 +40,7 @@ ppo_config = (
         use_critic=True,
         use_gae=True,
         lambda_=0.95,
-        train_batch_size=config.TRAIN_BATCH_SIZE,
+        train_batch_size=600,
         minibatch_size=config.MINI_BATCH_SIZE,
         shuffle_batch_per_epoch=True,
         lr=[
@@ -51,6 +52,7 @@ ppo_config = (
         ],
         num_epochs=config.TRAIN_NUM_EPOCHS,
         clip_param=config.TRAIN_CLIP_PARAM,
+        kl_coeff=0.1,
     )
     .evaluation(
         evaluation_interval=config.EVAL_INTERVAL,
@@ -65,6 +67,7 @@ ppo_config = (
                 "gray_scale": config.OBS_GRAY_SCALE,
                 "frame_stack": config.OBS_FRAME_STACK,
                 "frame_skip": config.OBS_FRAME_SKIP,
+                "normalize_rewards": config.NORMALIZE_REWARDS,
                 "render_mode": "rgb_array",
                 "record_video": True,
             }

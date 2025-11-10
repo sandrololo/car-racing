@@ -162,6 +162,7 @@ class SingleAgentCarRacingEnv(gymnasium.Wrapper):
             gray_scale = config.get("gray_scale", False)
             frame_stack = config.get("frame_stack", 1)
             frame_skip = config.get("frame_skip", 1)
+            normalize_rewards = config.get("normalize_rewards", False)
             record_video = config.get("record_video", False)
         else:
             lap_complete_percent = 0.95
@@ -190,6 +191,8 @@ class SingleAgentCarRacingEnv(gymnasium.Wrapper):
             self.env = wrappers.FrameStackObservation(self.env, frame_stack)
         if frame_skip > 1:
             self.env = wrappers.MaxAndSkipObservation(self.env, frame_skip)
+        if normalize_rewards is True:
+            self.env = wrappers.NormalizeReward(self.env)
         self.env = wrappers.TransformObservation(
             self.env,
             _preprocess_obs,
