@@ -166,8 +166,18 @@ class CarInfo:
 
     def reset(self, world, track):
         beta = track[0][1]
-        x = track[0][2] + (-1) ** self.count * 2.5 - self.count * 5.0 * math.sin(beta)
-        y = track[0][3] + self.count * 5.0 * math.cos(beta)
+        x0 = track[0][2]
+        y0 = track[0][3]
+        x = (
+            x0
+            + (-1) ** self.count * 2.5 * math.cos(beta)
+            - self.count * 5.0 * math.sin(beta)
+        )
+        y = (
+            y0
+            + (-1) ** self.count * 2.5 * math.sin(beta)
+            + self.count * 5.0 * math.cos(beta)
+        )
         self.car = Car(world, beta, x, y)
         self.car.hull.userData = self
         self.reward = 0.0
@@ -418,7 +428,7 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
             # computing transformations
             angle = -(first_car.angle + last_car.angle) / 2
 
-            zoom = 550 / max((max_x - min_x), (max_y - min_y))
+            zoom = 550 / max(1, max((max_x - min_x), (max_y - min_y)))
             scroll_x = -(max_x + min_x) / 2 * zoom
             scroll_y = -(max_y + min_y) / 2 * zoom
             trans = pygame.math.Vector2((scroll_x, scroll_y)).rotate_rad(angle)
