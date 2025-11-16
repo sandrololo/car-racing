@@ -1,46 +1,130 @@
 from collections import deque
-from typing import Any, Final, SupportsFloat
+from typing import Any, Final, SupportsFloat, Callable
 from copy import deepcopy
 import numpy as np
+from ray.rllib.env.multi_agent_env import MultiAgentEnv
 import gymnasium as gym
 from gymnasium import spaces
-from gymnasium.wrappers import TransformObservation, RecordVideo as GymRecordVideo
 from gymnasium.core import ActType, ObsType, WrapperObsType, WrapperActType
 from gymnasium.envs.registration import EnvSpec
-from gymnasium.vector.utils import batch_space, concatenate, create_empty_array
-from gymnasium.wrappers.utils import create_zero_array
+from gymnasium.wrappers import RecordVideo as GymRecordVideo
+from gymnasium.wrappers.utils import RunningMeanStd
 
 
-class RecordVideo(GymRecordVideo):
+class MultiAgentEnvWrapper(gym.Wrapper):
+    def __init__(self, env: MultiAgentEnv):
+        super().__init__(env)
+        self.observation_spaces = env.observation_spaces
+        self.action_spaces = env.action_spaces
+
+
+class TransformObservation(MultiAgentEnvWrapper):
+    """Applies a transformation function to the observations returned by ``reset`` and ``step``."""
+
+    def __init__(
+        self,
+        env: MultiAgentEnv,
+        transform_function: Callable,
+        new_observation_space: dict,
+    ):
+        super().__init__(env)
+        self.transform_function = transform_function
+        self.observation_spaces = new_observation_space
+
+    def step(
+        self, action: WrapperActType
+    ) -> tuple[WrapperObsType, SupportsFloat, bool, bool, dict[str, Any]]:
+        obs, reward, terminated, truncated, info = super().step(action)
+        transformed_obs = self.transform_function(obs)
+        return transformed_obs, reward, terminated, truncated, info
+
+    def reset(
+        self, *, seed: int = None, options: dict[str, Any] = None
+    ) -> tuple[WrapperObsType, dict[str, Any]]:
+        obs, info = super().reset(seed=seed, options=options)
+        transformed_obs = self.transform_function(obs)
+        return transformed_obs, info
+
+
+class RecordVideo(MultiAgentEnvWrapper):
     """Records videos of environment episodes using the environment's render function."""
 
+    def __init__(
+        self,
+        env: MultiAgentEnv,
+        video_folder: str,
+        episode_trigger=None,
+        step_trigger=None,
+        video_length: int = 0,
+        name_prefix: str = "rl-video",
+        fps: int | None = None,
+        disable_logger: bool = True,
+    ):
+        super().__init__(env)
+        self.record_video = GymRecordVideo(
+            env,
+            video_folder,
+            episode_trigger=episode_trigger,
+            step_trigger=step_trigger,
+            video_length=video_length,
+            name_prefix=name_prefix,
+            fps=fps,
+            disable_logger=disable_logger,
+        )
+
     def _capture_frame(self):
-        assert self.recording, "Cannot capture a frame, recording wasn't started."
+        assert (
+            self.record_video.recording
+        ), "Cannot capture a frame, recording wasn't started."
         frame = self.env._render("video")
         assert isinstance(frame, np.ndarray), (
             "Expected the type of frame returned by render to be a numpy array, "
             f"got instead {type(frame)}."
         )
-        self.recorded_frames.append(frame)
+        self.record_video.recorded_frames.append(frame)
+
+    def reset(
+        self, *, seed: int = None, options: dict[str, Any] = None
+    ) -> tuple[ObsType, dict[str, Any]]:
+        return self.record_video.reset(seed=seed, options=options)
+
+    def step(
+        self, action: ActType
+    ) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
+        return self.record_video.step(action)
+
+    def render(self):
+        return self.env.render()
+
+    def close(self):
+        self.record_video.close()
+
+    def start_recording(self, video_name: str):
+        self.record_video.start_recording(video_name)
+
+    def stop_recording(self):
+        self.record_video.stop_recording()
+
+    def __del__(self):
+        self.record_video.__del__()
 
 
-class TimeLimit(
-    gym.Wrapper[ObsType, ActType, ObsType, ActType], gym.utils.RecordConstructorArgs
-):
+class TimeLimit(MultiAgentEnvWrapper, gym.utils.RecordConstructorArgs):
     """Limits the number of steps for an environment through truncating the environment if a maximum number of timesteps is exceeded."""
 
     def __init__(
         self,
-        env: gym.Env,
+        env: MultiAgentEnv,
         max_episode_steps: int,
     ):
         assert (
             isinstance(max_episode_steps, int) and max_episode_steps > 0
         ), f"Expect the `max_episode_steps` to be positive, actually: {max_episode_steps}"
+
         gym.utils.RecordConstructorArgs.__init__(
             self, max_episode_steps=max_episode_steps
         )
-        gym.Wrapper.__init__(self, env)
+        super().__init__(env)
 
         self._max_episode_steps = max_episode_steps
         self._elapsed_steps = None
@@ -50,7 +134,7 @@ class TimeLimit(
         self._elapsed_steps += 1
 
         if self._elapsed_steps >= self._max_episode_steps:
-            for key, value in terminated.items():
+            for key in observation.keys():
                 truncated[key] = True
             truncated["__all__"] = True
 
@@ -83,23 +167,52 @@ class TimeLimit(
         return env_spec
 
 
-def create_grayscale_observation(obs: dict) -> dict:
+def _preprocess_obs(obs: dict) -> dict:
+    """Convert uint8 observations to normalized float32."""
+    normalized_obs = {}
+    for key, value in obs.items():
+        normalized_obs[key] = value.astype(np.float32) / 255.0
+    return normalized_obs
+
+
+class NormalizeObservation(TransformObservation, gym.utils.RecordConstructorArgs):
+    """Normalizes observations to the range [0.0, 1.0]."""
+
+    def __init__(self, env: MultiAgentEnv):
+        for value in env.observation_spaces.values():
+            assert isinstance(value, spaces.Box)
+            assert np.issubdtype(value.dtype, np.integer)
+            assert np.all(value.low == 0)
+            assert np.all(value.high == 255)
+
+        gym.utils.RecordConstructorArgs.__init__(self)
+        new_observation_spaces = {
+            key: spaces.Box(
+                low=0.0,
+                high=1.0,
+                shape=value.shape,
+                dtype=np.float32,
+            )
+            for key, value in env.observation_spaces.items()
+        }
+        super().__init__(env, _preprocess_obs, new_observation_spaces)
+
+
+def _create_grayscale_observation(obs: dict) -> dict:
     gray_obs = {}
     for key, value in obs.items():
         gray_obs[key] = np.sum(
             np.multiply(value, np.array([0.2125, 0.7154, 0.0721])), axis=-1
         ).astype(np.uint8)
+        gray_obs[key] = np.expand_dims(gray_obs[key], axis=-1)
     return gray_obs
 
 
-class GrayscaleObservation(
-    TransformObservation[WrapperObsType, ActType, ObsType],
-    gym.utils.RecordConstructorArgs,
-):
+class GrayscaleObservation(TransformObservation, gym.utils.RecordConstructorArgs):
     """Converts an image observation computed by ``reset`` and ``step`` from RGB to Grayscale."""
 
-    def __init__(self, env: gym.Env[ObsType, ActType]):
-        for key, value in env.observation_space.spaces.items():
+    def __init__(self, env: MultiAgentEnv):
+        for value in env.observation_spaces.values():
             assert isinstance(value, spaces.Box)
             assert len(value.shape) == 3 and value.shape[-1] == 3
             assert (
@@ -109,27 +222,16 @@ class GrayscaleObservation(
             )
 
         gym.utils.RecordConstructorArgs.__init__(self)
-
-        self.observation_spaces = {
-            key: spaces.Box(low=0, high=255, shape=value.shape[:2], dtype=np.uint8)
-            for key, value in env.observation_space.spaces.items()
+        new_observation_spaces = {
+            key: spaces.Box(
+                low=0, high=255, shape=value.shape[:2] + (1,), dtype=np.uint8
+            )
+            for key, value in env.observation_spaces.items()
         }
-
-        new_observation_space = spaces.Box(
-            low=0, high=255, shape=env.observation_space.shape[:2], dtype=np.uint8
-        )
-        TransformObservation.__init__(
-            self,
-            env=env,
-            func=create_grayscale_observation,
-            observation_space=new_observation_space,
-        )
+        super().__init__(env, _create_grayscale_observation, new_observation_spaces)
 
 
-class FrameStackObservation(
-    gym.Wrapper[WrapperObsType, ActType, ObsType, ActType],
-    gym.utils.RecordConstructorArgs,
-):
+class FrameStackObservation(MultiAgentEnvWrapper, gym.utils.RecordConstructorArgs):
     """Stacks the observations from the last ``N`` time steps in a rolling manner.
 
     For example, if the number of stacks is 4, then the returned observation contains
@@ -138,7 +240,7 @@ class FrameStackObservation(
     has shape [4, 3].
     """
 
-    def __init__(self, env: gym.Env[ObsType, ActType], stack_size: int):
+    def __init__(self, env: MultiAgentEnv, stack_size: int):
         """Observation wrapper that stacks the observations in a rolling manner.
 
         Args:
@@ -146,7 +248,7 @@ class FrameStackObservation(
             stack_size: The number of frames to stack.
         """
         gym.utils.RecordConstructorArgs.__init__(self, stack_size=stack_size)
-        gym.Wrapper.__init__(self, env)
+        super().__init__(env)
 
         if not np.issubdtype(type(stack_size), np.integer):
             raise TypeError(
@@ -156,34 +258,30 @@ class FrameStackObservation(
             raise ValueError(
                 f"The stack_size needs to be greater than zero, actual value: {stack_size}"
             )
-        self.padding_value: ObsType = {
-            key: create_zero_array(value)
-            for key, value in env.observation_space.spaces.items()
-        }
-
         self.observation_spaces = {
             key: spaces.Box(
-                low=0, high=255, shape=(stack_size, *value.shape), dtype=np.uint8
+                low=value.low.min(),
+                high=value.high.max(),
+                shape=(
+                    (*value.shape[:-1], stack_size)
+                    if len(value.shape) >= 3
+                    else (*value.shape, stack_size)
+                ),
+                dtype=value.dtype,
             )
-            for key, value in env.observation_space.spaces.items()
+            for key, value in env.observation_spaces.items()
         }
         self.stack_size: Final[int] = stack_size
-
+        self.padding_value = {
+            key: np.zeros(value.shape, value.dtype).squeeze()
+            for key, value in env.observation_spaces.items()
+        }
         self.obs_queue = {
             key: deque(
                 [self.padding_value[key] for _ in range(self.stack_size)],
                 maxlen=self.stack_size,
             )
-            for key in env.observation_space.spaces.keys()
-        }
-        self.stacked_obs = {
-            key: create_empty_array(
-                batch_space(
-                    env.observation_space.spaces[key],
-                    (self.stack_size,),
-                )
-            )
-            for key in env.observation_space.spaces.keys()
+            for key, value in env.observation_spaces.items()
         }
 
     def step(
@@ -198,18 +296,12 @@ class FrameStackObservation(
             Stacked observations, reward, terminated, truncated, and info from the environment
         """
         obs, reward, terminated, truncated, info = self.env.step(action)
-        for key in obs.keys():
-            self.obs_queue[key].append(obs[key])
+        for key, value in obs.items():
+            self.obs_queue[key].append(value.squeeze())
 
         updated_obs = {
-            key: deepcopy(
-                concatenate(
-                    self.env.observation_space.spaces[key],
-                    self.obs_queue[key],
-                    self.stacked_obs[key],
-                )
-            )
-            for key in self.env.observation_space.spaces.keys()
+            key: deepcopy(np.stack(value, axis=-1))
+            for key, value in self.obs_queue.items()
         }
         return updated_obs, reward, terminated, truncated, info
 
@@ -218,21 +310,82 @@ class FrameStackObservation(
     ) -> tuple[WrapperObsType, dict[str, Any]]:
         obs, info = self.env.reset(seed=seed, options=options)
 
-        self.padding_value = obs
         for _ in range(self.stack_size - 1):
-            for key in obs.keys():
-                self.obs_queue[key].append(self.padding_value[key])
-        for key in obs.keys():
-            self.obs_queue[key].append(obs[key])
+            for key, value in self.padding_value.items():
+                self.obs_queue[key].append(value.squeeze())
+        for key, value in obs.items():
+            self.obs_queue[key].append(value.squeeze())
 
         updated_obs = {
-            key: deepcopy(
-                concatenate(
-                    self.env.observation_space.spaces[key],
-                    self.obs_queue[key],
-                    self.stacked_obs[key],
-                )
-            )
-            for key in self.env.observation_space.spaces.keys()
+            key: deepcopy(np.stack(value, axis=-1))
+            for key, value in self.obs_queue.items()
         }
         return updated_obs, info
+
+
+class NormalizeReward(MultiAgentEnvWrapper, gym.utils.RecordConstructorArgs):
+    r"""Normalizes immediate rewards such that their exponential moving average has an approximately fixed variance.
+    The reward is avaraged over all agents, assuming they share their policy.
+
+    The property `_update_running_mean` allows to freeze/continue the running mean calculation of the reward
+    statistics. If `True` (default), the `RunningMeanStd` will get updated every time `self.normalize()` is called.
+    If False, the calculated statistics are used but not updated anymore; this may be used during evaluation.
+
+    Note:
+        The scaling depends on past trajectories and rewards will not be scaled correctly if the wrapper was newly
+        instantiated or the policy was changed recently.
+    """
+
+    def __init__(
+        self,
+        env: MultiAgentEnv,
+        gamma: float = 0.99,
+        epsilon: float = 1e-8,
+    ):
+        """This wrapper will normalize immediate rewards s.t. their exponential moving average has an approximately fixed variance.
+
+        Args:
+            env (env): The environment to apply the wrapper
+            epsilon (float): A stability parameter
+            gamma (float): The discount factor that is used in the exponential moving average.
+        """
+        gym.utils.RecordConstructorArgs.__init__(self, gamma=gamma, epsilon=epsilon)
+        super().__init__(env)
+
+        self.return_rms = RunningMeanStd(shape=())
+        self.discounted_reward: np.array = np.array([0.0])
+        self.gamma = gamma
+        self.epsilon = epsilon
+        self._update_running_mean = True
+
+    @property
+    def update_running_mean(self) -> bool:
+        """Property to freeze/continue the running mean calculation of the reward statistics."""
+        return self._update_running_mean
+
+    @update_running_mean.setter
+    def update_running_mean(self, setting: bool):
+        """Sets the property to freeze/continue the running mean calculation of the reward statistics."""
+        self._update_running_mean = setting
+
+    def step(
+        self, action: ActType
+    ) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
+        """Steps through the environment, normalizing the reward returned."""
+        obs, reward_dict, terminated, truncated, info = super().step(action)
+        keys = reward_dict.keys()
+
+        # Using the `discounted_reward` rather than `reward` makes no sense but for backward compatibility, it is being kept
+        for key in keys:
+            self.discounted_reward = self.discounted_reward * self.gamma * (
+                1 - terminated[key]
+            ) + float(reward_dict[key])
+            if self._update_running_mean:
+                self.return_rms.update(self.discounted_reward)
+
+        # We don't (reward - self.return_rms.mean) see https://github.com/openai/baselines/issues/538
+        normalized_rewards = {
+            key: reward_dict[key] / np.sqrt(self.return_rms.var + self.epsilon)
+            for key in keys
+        }
+        return obs, normalized_rewards, terminated, truncated, info

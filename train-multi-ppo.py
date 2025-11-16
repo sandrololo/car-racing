@@ -1,22 +1,27 @@
+import numpy as np
 import ray
 from ray import tune
 from ray.rllib.algorithms.ppo import PPOConfig
-from ray.rllib.core.rl_module.default_model_config import DefaultModelConfig
+from ray.rllib.core.rl_module.multi_rl_module import MultiRLModuleSpec
+from ray.rllib.core.rl_module.rl_module import RLModuleSpec
 from ray.air.integrations.wandb import WandbLoggerCallback
-import gymnasium
+from gymnasium.spaces import Box
 
 from environments import MultiAgentCarRacingEnv
 from environments.multiagentwrappers import (
+    MultiAgentEnvWrapper,
     RecordVideo,
-    TimeLimit,
     GrayscaleObservation,
+    TimeLimit,
+    NormalizeObservation,
     FrameStackObservation,
+    NormalizeReward,
 )
 from wandbvideocallback import MultiAgentWandbVideoCallback
 import config as training_config
 
 
-class WrappedEnv(gymnasium.Wrapper):
+class WrappedEnv(MultiAgentEnvWrapper):
     def __init__(
         self,
         config: dict = None,
@@ -24,9 +29,8 @@ class WrappedEnv(gymnasium.Wrapper):
         **kwargs,
     ):
         max_timesteps = config.get("max_timesteps", None)
-        gray_scale = config.get("gray_scale", False)
-        frame_stack = config.get("frame_stack", 1)
         record_video = config.get("record_video", False)
+        normalize_rewards = config.get("normalize_rewards", False)
         self.env = MultiAgentCarRacingEnv(config, *args, **kwargs)
         if record_video:
             self.env = RecordVideo(
@@ -40,10 +44,11 @@ class WrappedEnv(gymnasium.Wrapper):
             )
         if max_timesteps is not None:
             self.env = TimeLimit(self.env, max_timesteps)
-        if gray_scale:
-            self.env = GrayscaleObservation(self.env)
-        if frame_stack > 1:
-            self.env = FrameStackObservation(self.env, frame_stack)
+        self.env = GrayscaleObservation(self.env)
+        self.env = FrameStackObservation(self.env, training_config.OBS_FRAME_STACK)
+        if normalize_rewards is True:
+            self.env = NormalizeReward(self.env)
+        self.env = NormalizeObservation(self.env)
         super().__init__(self.env)
 
 
@@ -55,7 +60,7 @@ ppo_config = (
             "lap_complete_percent": 0.95,
             "num_cars": training_config.NUM_CARS,
             "max_timesteps": training_config.TRAIN_MAX_TIMESTEPS,
-            "frame_skip": training_config.OBS_FRAME_SKIP,
+            "normalize_rewards": training_config.NORMALIZE_REWARDS,
             "record_video": False,
         },
         render_env=False,
@@ -64,10 +69,20 @@ ppo_config = (
         policies={"p0"},
         # All agents map to the exact same policy.
         policy_mapping_fn=(lambda aid, *args, **kwargs: "p0"),
+        count_steps_by="env_steps",
     )
     .rl_module(
-        model_config=DefaultModelConfig(
-            conv_bias_initializer_kwargs={"dtype": "uint8"},
+        rl_module_spec=MultiRLModuleSpec(
+            rl_module_specs={
+                "p0": RLModuleSpec(
+                    observation_space=Box(
+                        low=0.0,
+                        high=1.0,
+                        shape=(96, 96, training_config.OBS_FRAME_STACK),
+                        dtype=np.float32,
+                    )
+                )
+            }
         ),
     )
     # don't use more than one num_envs_per_env_runner so that training happens more often
@@ -90,11 +105,11 @@ ppo_config = (
                 training_config.LR_SCHEDULE_END,
             ],
         ],
-        num_epochs=2,
+        num_epochs=training_config.TRAIN_NUM_EPOCHS,
         clip_param=0.1,
     )
     .evaluation(
-        evaluation_interval=10,
+        evaluation_interval=20,
         evaluation_num_env_runners=1,
         evaluation_sample_timeout_s=3000,
         evaluation_duration=training_config.EVAL_DURATION,
@@ -105,6 +120,7 @@ ppo_config = (
                 "num_cars": training_config.NUM_CARS,
                 "max_timesteps": training_config.TRAIN_MAX_TIMESTEPS,
                 "frame_skip": training_config.OBS_FRAME_SKIP,
+                "normalize_rewards": False,
                 "record_video": True,
                 "render_mode": "rgb_array",
             },
@@ -122,7 +138,7 @@ results = tune.Tuner(
     ),
     param_space=ppo_config,
     run_config=tune.RunConfig(
-        stop={"training_iteration": 50},
+        stop={"training_iteration": 300},
         verbose=1,
         callbacks=[
             WandbLoggerCallback(

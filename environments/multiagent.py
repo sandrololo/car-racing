@@ -517,7 +517,7 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
             image_array = np.transpose(
                 np.array(pygame.surfarray.pixels3d(scaled_screen)), axes=(1, 0, 2)
             )
-            image_arrays.append(image_array.astype(np.float32) / 255.0)
+            image_arrays.append(image_array)
         return image_arrays
 
     def close(self):
