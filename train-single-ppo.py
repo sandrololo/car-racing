@@ -21,6 +21,7 @@ ppo_config = (
             "frame_skip": config.OBS_FRAME_SKIP,
             "normalize_rewards": config.NORMALIZE_REWARDS,
             "max_timesteps": config.TRAIN_MAX_TIMESTEPS,
+            "max_timesteps_per_episode_increase": config.TRAIN_MAX_TIMESTEPS_PER_EPISODE_INCREASE,
         },
         render_env=False,
     )
@@ -31,7 +32,7 @@ ppo_config = (
     )
     # don't use more than one num_envs_per_env_runner so that training happens more often
     .env_runners(
-        num_env_runners=6, sample_timeout_s=1500, rollout_fragment_length=200
+        num_env_runners=6, sample_timeout_s=1500, rollout_fragment_length=400
     )  # makes sense to have as many runners and therefore as much data as possible
     .learners(num_learners=1, num_gpus_per_learner=1)
     # only 1 runner and low interval for evaluation as we have new data every iteration anyways
@@ -40,7 +41,7 @@ ppo_config = (
         use_critic=True,
         use_gae=True,
         lambda_=0.95,
-        train_batch_size=1200,
+        train_batch_size=2400,
         minibatch_size=config.MINI_BATCH_SIZE,
         shuffle_batch_per_epoch=True,
         lr=[

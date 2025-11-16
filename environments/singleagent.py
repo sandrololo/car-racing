@@ -27,6 +27,7 @@ except ImportError as e:
         'pygame is not installed, run `pip install "gymnasium[box2d]"`'
     ) from e
 
+from .singleagentwrappers import IncreasingTimeLimit
 import config as training_config
 
 
@@ -159,6 +160,9 @@ class SingleAgentCarRacingEnv(gymnasium.Wrapper):
             lap_complete_percent = config.get("lap_complete_percent", 0.95)
             render_mode = config.get("render_mode", None)
             max_timesteps = config.get("max_timesteps", None)
+            max_timesteps_per_episode_increase = config.get(
+                "max_timesteps_per_episode_increase", 0.0
+            )
             gray_scale = config.get("gray_scale", False)
             frame_stack = config.get("frame_stack", 1)
             frame_skip = config.get("frame_skip", 1)
@@ -168,6 +172,7 @@ class SingleAgentCarRacingEnv(gymnasium.Wrapper):
             lap_complete_percent = 0.95
             render_mode = None
             max_timesteps = None
+            max_timesteps_per_episode_increase = 0.0
             gray_scale = False
             frame_stack = 1
             frame_skip = 1
@@ -184,7 +189,9 @@ class SingleAgentCarRacingEnv(gymnasium.Wrapper):
                 name_prefix="car-racing-env",
             )
         if max_timesteps is not None:
-            self.env = wrappers.TimeLimit(self.env, max_timesteps)
+            self.env = IncreasingTimeLimit(
+                self.env, max_timesteps, max_timesteps_per_episode_increase
+            )
         if gray_scale:
             self.env = wrappers.GrayscaleObservation(self.env)
         if frame_stack > 1:
