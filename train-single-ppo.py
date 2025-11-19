@@ -32,7 +32,9 @@ ppo_config = (
     )
     # don't use more than one num_envs_per_env_runner so that training happens more often
     .env_runners(
-        num_env_runners=6, sample_timeout_s=1500, rollout_fragment_length=400
+        num_env_runners=config.NUM_ENV_RUNNERS,
+        sample_timeout_s=1500,
+        rollout_fragment_length=config.ROLLOUT_FRAGMENT_LENGTH,
     )  # makes sense to have as many runners and therefore as much data as possible
     .learners(num_learners=1, num_gpus_per_learner=1)
     # only 1 runner and low interval for evaluation as we have new data every iteration anyways
@@ -41,13 +43,15 @@ ppo_config = (
         use_critic=True,
         use_gae=True,
         lambda_=0.95,
-        train_batch_size=2400,
+        train_batch_size=config.NUM_ENV_RUNNERS * config.ROLLOUT_FRAGMENT_LENGTH,
         minibatch_size=config.MINI_BATCH_SIZE,
         shuffle_batch_per_epoch=True,
         lr=[
             [0, config.LR_SCHEDULE_START],
             [
-                config.TRAIN_BATCH_SIZE * config.TRAIN_NUM_ITERATIONS,
+                config.NUM_ENV_RUNNERS
+                * config.ROLLOUT_FRAGMENT_LENGTH
+                * config.TRAIN_NUM_ITERATIONS,
                 config.LR_SCHEDULE_END,
             ],
         ],
