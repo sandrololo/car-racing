@@ -86,12 +86,48 @@ class RecordVideo(MultiAgentEnvWrapper):
     def reset(
         self, *, seed: int = None, options: dict[str, Any] = None
     ) -> tuple[ObsType, dict[str, Any]]:
-        return self.record_video.reset(seed=seed, options=options)
+        """Reset the environment and eventually starts a new recording."""
+        obs, info = super().reset(seed=seed, options=options)
+        self.record_video.episode_id += 1
+
+        if self.record_video.recording and self.record_video.video_length == float(
+            "inf"
+        ):
+            self.stop_recording()
+
+        if self.record_video.episode_trigger and self.record_video.episode_trigger(
+            self.record_video.episode_id
+        ):
+            self.start_recording(
+                f"{self.record_video.name_prefix}-episode-{self.record_video.episode_id}"
+            )
+        if self.record_video.recording:
+            self._capture_frame()
+            if len(self.record_video.recorded_frames) > self.record_video.video_length:
+                self.stop_recording()
+
+        return obs, info
 
     def step(
         self, action: ActType
     ) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
-        return self.record_video.step(action)
+        """Steps through the environment using action, recording observations if :attr:`self.recording`."""
+        obs, rew, terminated, truncated, info = self.env.step(action)
+        self.record_video.step_id += 1
+
+        if self.record_video.step_trigger and self.record_video.step_trigger(
+            self.record_video.step_id
+        ):
+            self.start_recording(
+                f"{self.record_video.name_prefix}-step-{self.record_video.step_id}"
+            )
+        if self.record_video.recording:
+            self._capture_frame()
+
+            if len(self.record_video.recorded_frames) > self.record_video.video_length:
+                self.stop_recording()
+
+        return obs, rew, terminated, truncated, info
 
     def render(self):
         return self.env.render()
