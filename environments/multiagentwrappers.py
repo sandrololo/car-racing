@@ -57,7 +57,7 @@ class RecordVideo(MultiAgentEnvWrapper):
         step_trigger=None,
         video_length: int = 0,
         name_prefix: str = "rl-video",
-        fps: int | None = None,
+        fps: int = None,
         disable_logger: bool = True,
     ):
         super().__init__(env)
