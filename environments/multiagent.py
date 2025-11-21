@@ -267,6 +267,7 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
             )  # steer, gas, brake
             for agent in self.possible_agents
         }
+        super().__init__()
 
     def _destroy(self):
         if not self.road:
