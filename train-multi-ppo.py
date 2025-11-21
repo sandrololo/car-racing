@@ -114,7 +114,7 @@ ppo_config = (
         clip_param=0.1,
     )
     .evaluation(
-        evaluation_interval=20,
+        evaluation_interval=training_config.EVAL_INTERVAL,
         evaluation_num_env_runners=1,
         evaluation_sample_timeout_s=3000,
         evaluation_duration=training_config.EVAL_DURATION,
@@ -143,7 +143,7 @@ results = tune.Tuner(
     ),
     param_space=ppo_config,
     run_config=tune.RunConfig(
-        stop={"training_iteration": 300},
+        stop={"training_iteration": training_config.TRAIN_NUM_ITERATIONS},
         verbose=1,
         callbacks=[
             WandbLoggerCallback(
