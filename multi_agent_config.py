@@ -1,8 +1,7 @@
+from environments.multiagent.cars import CarConfig, EnginePower, TyreType
+
 OBS_FRAME_STACK = 4
-OBS_FRAME_SKIP = 1
-OBS_GRAY_SCALE = True
 NORMALIZE_REWARDS = True
-REWARD_MINUS_PER_STEP = 0.1
 NUM_ENV_RUNNERS = 4
 ROLLOUT_FRAGMENT_LENGTH = 200
 TRAIN_MAX_TIMESTEPS = 500
@@ -18,3 +17,13 @@ EVAL_INTERVAL = 50
 EVAL_MAX_TIMESTEPS = 1000
 EVAL_DURATION = 3
 NUM_CARS = 8
+CAR_CONFIGS = [
+    CarConfig(EnginePower.MEDIUM, TyreType.MEDIUM),
+    CarConfig(EnginePower.MEDIUM, TyreType.MEDIUM),
+    CarConfig(EnginePower.MEDIUM, TyreType.MEDIUM),
+    CarConfig(EnginePower.MEDIUM, TyreType.MEDIUM),
+    CarConfig(EnginePower.MEDIUM, TyreType.MEDIUM),
+    CarConfig(EnginePower.MEDIUM, TyreType.MEDIUM),
+    CarConfig(EnginePower.MEDIUM, TyreType.MEDIUM),
+    CarConfig(EnginePower.MEDIUM, TyreType.MEDIUM),
+]

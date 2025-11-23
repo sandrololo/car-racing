@@ -59,6 +59,7 @@ ppo_config = (
         env_config={
             "lap_complete_percent": 0.95,
             "num_cars": training_config.NUM_CARS,
+            "cars_configs": training_config.CAR_CONFIGS,
             "max_timesteps": training_config.TRAIN_MAX_TIMESTEPS,
             "normalize_rewards": training_config.NORMALIZE_REWARDS,
             "record_video": False,
@@ -123,8 +124,8 @@ ppo_config = (
             "env_config": {
                 "lap_complete_percent": 0.95,
                 "num_cars": training_config.NUM_CARS,
+                "cars_configs": training_config.CAR_CONFIGS,
                 "max_timesteps": training_config.TRAIN_MAX_TIMESTEPS,
-                "frame_skip": training_config.OBS_FRAME_SKIP,
                 "normalize_rewards": False,
                 "record_video": True,
                 "render_mode": "rgb_array",

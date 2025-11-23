@@ -22,7 +22,7 @@ except ImportError as e:
     raise DependencyNotInstalled(
         'pygame is not installed, run `pip install "gymnasium[box2d]"`'
     ) from e
-from .cars import MultiAgentCars, LeaderBoard
+from .cars import CarConfig, MultiAgentCars, LeaderBoard
 from .config import (
     STATE_W,
     STATE_H,
@@ -120,6 +120,7 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
 
     def __init__(self, config: dict = None, *args, **kwargs):
         num_cars = config.get("num_cars", 8)
+        car_configs = config.get("car_configs", [CarConfig.default()] * num_cars)
         self.lap_complete_percent = config.get("lap_complete_percent", 0.95)
         self.render_mode = config.get("render_mode", None)
 
@@ -141,7 +142,7 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
         self.fd_tile = Box2D.b2.fixtureDef(
             shape=Box2D.b2.polygonShape(vertices=[(0, 0), (1, 0), (1, -1), (0, -1)])
         )
-        self.cars = MultiAgentCars(num_cars)
+        self.cars = MultiAgentCars(num_cars, car_configs)
         self.leaderboard = LeaderBoard(self.cars)
 
         self.possible_agents = [f"car_{i}" for i in range(num_cars)]

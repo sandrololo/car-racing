@@ -1,9 +1,20 @@
 import pygame
 import numpy as np
 from environments import MultiAgentCarRacingEnv
+from environments.multiagent.cars import CarConfig, EnginePower, TyreType
 
 NUM_CARS = 8
 
+CAR_CONFIGS = [
+    CarConfig(EnginePower.HIGH, TyreType.SOFT),
+    CarConfig(EnginePower.LOW, TyreType.HARD),
+    CarConfig(EnginePower.LOW, TyreType.HARD),
+    CarConfig(EnginePower.LOW, TyreType.HARD),
+    CarConfig(EnginePower.MEDIUM, TyreType.MEDIUM),
+    CarConfig(EnginePower.MEDIUM, TyreType.MEDIUM),
+    CarConfig(EnginePower.HIGH, TyreType.SOFT),
+    CarConfig(EnginePower.HIGH, TyreType.SOFT),
+]
 
 if __name__ == "__main__":
     a = np.array([0.0, 0.0, 0.0])
@@ -38,7 +49,13 @@ if __name__ == "__main__":
             if event.type == pygame.QUIT:
                 quit = True
 
-    env = MultiAgentCarRacingEnv(config={"render_mode": "human", "num_cars": NUM_CARS})
+    env = MultiAgentCarRacingEnv(
+        config={
+            "render_mode": "human",
+            "num_cars": NUM_CARS,
+            "car_configs": CAR_CONFIGS,
+        }
+    )
 
     actions = {}
     quit = False

@@ -1,4 +1,5 @@
 import math
+from enum import Enum
 from typing import Union
 import numpy as np
 from gymnasium.envs.box2d.car_dynamics import (
@@ -20,10 +21,47 @@ except ImportError as e:
 from .config import FPS, PLAYFIELD, WINDOW_H, WINDOW_W
 
 
+class EnginePower(Enum):
+    LOW = 0.7
+    MEDIUM = 1.0
+    HIGH = 1.3
+
+
+class TyreType(Enum):
+    HARD = 0.8
+    MEDIUM = 1.0
+    SOFT = 1.2
+
+
+class CarConfig:
+    @staticmethod
+    def default():
+        return CarConfig(EnginePower.MEDIUM, TyreType.MEDIUM)
+
+    def __init__(
+        self,
+        engine_type: EnginePower = EnginePower.MEDIUM,
+        tyre_type: TyreType = TyreType.MEDIUM,
+    ):
+        self._engine_type = engine_type
+        self._tyre_type = tyre_type
+
+    @property
+    def engine_type(self) -> EnginePower:
+        return self._engine_type
+
+    @property
+    def tyre_type(self) -> TyreType:
+        return self._tyre_type
+
+
 class _Car:
     car_count = 0
 
-    def __init__(self):
+    def __init__(
+        self,
+        config: CarConfig = CarConfig.default(),
+    ):
         self.car = None
         self.reward = 0.0
         self.prev_reward = 0.0
@@ -35,8 +73,9 @@ class _Car:
         self.count = _Car.car_count
         self.id = f"car_{self.count}"
         _Car.car_count += 1
-        self.friction_limit = 1000000 * CAR_SIZE * CAR_SIZE
-        self.engine_power = 100000000 * CAR_SIZE * CAR_SIZE
+        self._config = config
+        self.friction_limit = 1000000 * CAR_SIZE * CAR_SIZE * config.tyre_type.value
+        self.engine_power = 100000000 * CAR_SIZE * CAR_SIZE * config.engine_type.value
 
     @property
     def position(self) -> tuple[float, float]:
@@ -333,8 +372,9 @@ class _Car:
 
 
 class MultiAgentCars:
-    def __init__(self, num_cars: int):
-        self._cars: list[_Car] = [_Car() for _ in range(num_cars)]
+    def __init__(self, num_cars: int, car_configs: list[CarConfig]):
+        assert num_cars == len(car_configs)
+        self._cars: list[_Car] = [_Car(car_configs[i]) for i in range(num_cars)]
 
     def get_enclosing_rect(self) -> tuple[float, float, float, float]:
         assert len(self._cars) > 0
