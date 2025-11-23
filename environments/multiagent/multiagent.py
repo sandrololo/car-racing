@@ -234,10 +234,7 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
         for i, surface in enumerate(self.surfaces):
             # computing transformations
             angle = -self.cars[i].angle
-            scroll_x = -(self.cars[i].position[0]) * zoom
-            scroll_y = -(self.cars[i].position[1]) * zoom
-            trans = pygame.math.Vector2((scroll_x, scroll_y)).rotate_rad(angle)
-            trans = (WINDOW_W / 2 + trans[0], WINDOW_H / 4 + trans[1])
+            trans = self.cars[i].get_translation(zoom)
 
             self._render_road(surface, zoom, trans, angle)
 

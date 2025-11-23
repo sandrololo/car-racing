@@ -14,7 +14,7 @@ except ImportError as e:
         'pygame is not installed, run `pip install "gymnasium[box2d]"`'
     ) from e
 
-from .config import FPS, PLAYFIELD
+from .config import FPS, PLAYFIELD, WINDOW_H, WINDOW_W
 
 
 class _CarInfo:
@@ -66,6 +66,13 @@ class _CarInfo:
             "fuel_spent": self.fuel_spent,
             "lap_count": self.lap_count,
         }
+
+    def get_translation(self, zoom: float) -> tuple[float, float]:
+        scroll_x = -(self.position[0]) * zoom
+        scroll_y = -(self.position[1]) * zoom
+        trans = pygame.math.Vector2((scroll_x, scroll_y)).rotate_rad(-self.angle)
+        trans = (WINDOW_W / 2 + trans[0], WINDOW_H / 4 + trans[1])
+        return trans
 
     def reset(self, world, track):
         beta = track[0][1]
