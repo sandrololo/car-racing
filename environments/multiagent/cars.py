@@ -40,19 +40,63 @@ class CarConfig:
 
     def __init__(
         self,
-        engine_type: EnginePower = EnginePower.MEDIUM,
+        engine_power: EnginePower = EnginePower.MEDIUM,
         tyre_type: TyreType = TyreType.MEDIUM,
     ):
-        self._engine_type = engine_type
+        self._engine_power = engine_power
         self._tyre_type = tyre_type
 
     @property
-    def engine_type(self) -> EnginePower:
-        return self._engine_type
+    def engine_power(self) -> EnginePower:
+        return self._engine_power
 
     @property
     def tyre_type(self) -> TyreType:
         return self._tyre_type
+
+    def render(self) -> pygame.Surface:
+        font = pygame.font.Font(pygame.font.get_default_font(), 12)
+        power_color = (
+            (255, 0, 0)
+            if self.engine_power == EnginePower.HIGH
+            else (
+                (255, 200, 0)
+                if self.engine_power == EnginePower.MEDIUM
+                else (0, 255, 255)
+            )
+        )
+        tyre_color = (
+            (255, 0, 0)
+            if self.tyre_type == TyreType.SOFT
+            else ((255, 200, 0) if self.tyre_type == TyreType.MEDIUM else (0, 255, 255))
+        )
+        power_desc_text = font.render(f"Power:", True, (255, 255, 255), None)
+        power_text = font.render(self.engine_power.name, True, power_color, None)
+        tyre_desc_text = font.render(f"Tyres:", True, (255, 255, 255), None)
+        tyre_text = font.render(self.tyre_type.name, True, tyre_color, None)
+        power_text_offset = power_desc_text.get_width() + 10
+        tyre_desc_text_offset = power_text_offset + power_text.get_width() + 10
+        tyre_text_offset = tyre_desc_text_offset + tyre_desc_text.get_width() + 10
+        config_text_surf = pygame.Surface(
+            (tyre_text_offset + tyre_text.get_width(), tyre_text.get_height()),
+            pygame.SRCALPHA,
+        )
+        config_text_surf.blits(
+            [
+                (power_desc_text, (0, 0)),
+                (power_text, (power_text_offset, 0)),
+                (tyre_desc_text, (tyre_desc_text_offset, 0)),
+                (tyre_text, (tyre_text_offset, 0)),
+            ],
+        )
+        return config_text_surf
+
+    @property
+    def __dict__(self) -> dict:
+        return {
+            "engine_power": self.engine_power.name,
+            "tyre_type": self.tyre_type.name,
+        }
 
 
 class _Car:
@@ -75,7 +119,7 @@ class _Car:
         _Car.car_count += 1
         self._config = config
         self.friction_limit = 1000000 * CAR_SIZE * CAR_SIZE * config.tyre_type.value
-        self.engine_power = 100000000 * CAR_SIZE * CAR_SIZE * config.engine_type.value
+        self.engine_power = 100000000 * CAR_SIZE * CAR_SIZE * config.engine_power.value
 
     @property
     def position(self) -> tuple[float, float]:
@@ -98,6 +142,10 @@ class _Car:
         return self.car.wheels
 
     @property
+    def config(self) -> CarConfig:
+        return self._config
+
+    @property
     def __dict__(self) -> dict:
         return {
             "car_id": self.id,
@@ -109,6 +157,7 @@ class _Car:
             "tiles_visited": self.tiles_visited,
             "fuel_spent": self.fuel_spent,
             "lap_count": self.lap_count,
+            "config": self.config.__dict__,
         }
 
     def get_translation(self, zoom: float) -> tuple[float, float]:

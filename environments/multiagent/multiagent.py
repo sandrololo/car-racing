@@ -320,6 +320,14 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
                 )
                 main_surface.blit(pos_text, pos_text_rect)
 
+                config_text_surf = car.config.render()
+                config_text_rect = config_text_surf.get_rect()
+                config_text_rect.center = (
+                    15 + config_text_rect.width / 2,
+                    WINDOW_H - WINDOW_H * 0.5 / 40.0 - i * 5 * (WINDOW_H / 40.0),
+                )
+                main_surface.blit(config_text_surf, config_text_rect)
+
                 x_start = WINDOW_W * 4 / 6 + i % 2 * WINDOW_W / 6
                 y_start = i // 2 * WINDOW_H / 4
                 main_surface.blit(
