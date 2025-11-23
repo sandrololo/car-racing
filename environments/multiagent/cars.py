@@ -14,6 +14,8 @@ except ImportError as e:
         'pygame is not installed, run `pip install "gymnasium[box2d]"`'
     ) from e
 
+from .config import FPS, PLAYFIELD
+
 
 class _CarInfo:
     car_count = 0
@@ -212,7 +214,7 @@ class MultiAgentCars:
         for car in self._cars:
             car.reset(world, track)
 
-    def step(self, actions: Union[dict, None], dt: float):
+    def apply_actions(self, actions: dict):
         assert len(self._cars) > 0
         if actions is not None:
             for car in self._cars:
@@ -220,7 +222,41 @@ class MultiAgentCars:
                 if act is not None:
                     car.apply_action(act)
         for car in self._cars:
-            car.step(dt)
+            car.step(1.0 / FPS)
+
+    def step(self, track, actions: Union[dict, None], observations):
+        step_rewards = [0.0 for _ in range(len(self._cars))]
+        info_d = {}
+        obs_d = {}
+        rew_d = {}
+        terminated_d = {}
+        truncated_d = {}
+        if actions is not None:  # First step without action, called from reset()
+            for i, car in enumerate(self._cars):
+                if not car.terminated or car.truncated:
+                    info_d[car.id] = {}
+                    car.reward -= 0.1
+                    # We actually don't want to count fuel spent, we want car to be faster.
+                    # self.reward -=  10 * self.car.fuel_spent / ENGINE_POWER
+                    car.fuel_spent = 0.0
+                    step_rewards[i] = car.reward - car.prev_reward
+                    car.prev_reward = car.reward
+                    if len(car.tiles_visited) == len(track) or car.lap_count >= 1:
+                        # Termination due to finishing lap
+                        car.terminated = True
+                        info_d[car.id]["lap_finished"] = True
+                    x, y = car.position
+                    if abs(x) > PLAYFIELD or abs(y) > PLAYFIELD:
+                        car.terminated = True
+                        info_d[car.id]["lap_finished"] = False
+                        step_rewards[i] = -100
+                    obs_d[car.id] = observations[i]
+                    rew_d[car.id] = step_rewards[i]
+                    terminated_d[car.id] = car.terminated
+                    truncated_d[car.id] = car.truncated
+        terminated_d["__all__"] = all(terminated_d.values())
+        truncated_d["__all__"] = all(truncated_d.values())
+        return obs_d, rew_d, terminated_d, truncated_d, info_d
 
     def destroy(self):
         assert len(self._cars) > 0

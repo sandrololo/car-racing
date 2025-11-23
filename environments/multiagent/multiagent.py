@@ -24,28 +24,23 @@ except ImportError as e:
         'pygame is not installed, run `pip install "gymnasium[box2d]"`'
     ) from e
 from .cars import MultiAgentCars
-import config as training_config
-
-
-STATE_W = 96  # less than Atari 160x192
-STATE_H = 96
-WINDOW_W = 1600
-WINDOW_H = 800
-
-SCALE = 6.0  # Track scale
-TRACK_RAD = 900 / SCALE  # Track is heavily morphed circle with this radius
-PLAYFIELD = 2000 / SCALE  # Game over boundary
-FPS = 50  # Frames per second
-ZOOM = 2.7  # Camera zoom
-
-TRACK_DETAIL_STEP = 21 / SCALE
-TRACK_TURN_RATE = 0.31
-TRACK_WIDTH = 40 / SCALE
-BORDER = 8 / SCALE
-BORDER_MIN_COUNT = 4
-GRASS_DIM = PLAYFIELD / 20.0
-MAX_SHAPE_DIM = (
-    max(GRASS_DIM, TRACK_WIDTH, TRACK_DETAIL_STEP) * math.sqrt(2) * ZOOM * SCALE
+from .config import (
+    STATE_W,
+    STATE_H,
+    WINDOW_W,
+    WINDOW_H,
+    SCALE,
+    TRACK_RAD,
+    PLAYFIELD,
+    FPS,
+    ZOOM,
+    TRACK_DETAIL_STEP,
+    TRACK_TURN_RATE,
+    TRACK_WIDTH,
+    BORDER,
+    BORDER_MIN_COUNT,
+    GRASS_DIM,
+    MAX_SHAPE_DIM,
 )
 
 
@@ -201,47 +196,15 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
         return obs, info
 
     def step(self, actions: Union[dict, None]):
-        self.cars.step(actions, 1.0 / FPS)
+        self.cars.apply_actions(actions)
         self.world.Step(1.0 / FPS, 6 * 30, 2 * 30)
-        self.t += 1.0 / FPS
 
         observations = self._render("state_pixels")
-
-        step_rewards = [0.0 for _ in range(len(self.cars))]
-        info_d = {}
-        obs_d = {}
-        rew_d = {}
-        terminated_d = {}
-        truncated_d = {}
-        if actions is not None:  # First step without action, called from reset()
-            for i, car in enumerate(self.cars):
-                if not car.terminated or car.truncated:
-                    info_d[car.id] = {}
-                    car.reward -= 0.1
-                    # We actually don't want to count fuel spent, we want car to be faster.
-                    # self.reward -=  10 * self.car.fuel_spent / ENGINE_POWER
-                    car.fuel_spent = 0.0
-                    step_rewards[i] = car.reward - car.prev_reward
-                    car.prev_reward = car.reward
-                    if len(car.tiles_visited) == len(self.track) or car.lap_count >= 1:
-                        # Termination due to finishing lap
-                        car.terminated = True
-                        info_d[car.id]["lap_finished"] = True
-                    x, y = car.position
-                    if abs(x) > PLAYFIELD or abs(y) > PLAYFIELD:
-                        car.terminated = True
-                        info_d[car.id]["lap_finished"] = False
-                        step_rewards[i] = -100
-                    obs_d[car.id] = observations[i]
-                    rew_d[car.id] = step_rewards[i]
-                    terminated_d[car.id] = car.terminated
-                    truncated_d[car.id] = car.truncated
-
+        obs_d, rew_d, terminated_d, truncated_d, info_d = self.cars.step(
+            self.track, actions, observations
+        )
         if self.render_mode == "human":
             self.render()
-
-        terminated_d["__all__"] = all(terminated_d.values())
-        truncated_d["__all__"] = all(truncated_d.values())
         return obs_d, rew_d, terminated_d, truncated_d, info_d
 
     def render(self):
