@@ -262,18 +262,12 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
                 pygame.display.init()
                 self.screen = pygame.display.set_mode((WINDOW_W, WINDOW_H))
             main_surface = pygame.Surface((WINDOW_W, WINDOW_H))
-            first_car = max(self.cars, key=lambda c: len(c.tiles_visited))
-            last_car = min(self.cars, key=lambda c: len(c.tiles_visited))
-            min_x = min(self.cars, key=lambda c: c.position[0]).position[0]
-            min_y = min(self.cars, key=lambda c: c.position[1]).position[1]
-            max_x = max(self.cars, key=lambda c: c.position[0]).position[0]
-            max_y = max(self.cars, key=lambda c: c.position[1]).position[1]
             # computing transformations
-            angle = -(first_car.angle + last_car.angle) / 2
-
-            zoom = 550 / max(1, max((max_x - min_x), (max_y - min_y)))
-            scroll_x = -(max_x + min_x) / 2 * zoom
-            scroll_y = -(max_y + min_y) / 2 * zoom
+            angle = -(self.cars.get_leader().angle + self.cars.get_last().angle) / 2
+            min_x, min_y, width, height = self.cars.get_enclosing_rect()
+            zoom = 550 / max(1, max((width), (height)))
+            scroll_x = -(min_x + width / 2) * zoom
+            scroll_y = -(min_y + height / 2) * zoom
             trans = pygame.math.Vector2((scroll_x, scroll_y)).rotate_rad(angle)
             trans = (WINDOW_W / 2 + trans[0], WINDOW_H / 2 + trans[1])
 

@@ -217,6 +217,22 @@ class MultiAgentCars:
     def __init__(self, num_cars: int):
         self._cars: list[_CarInfo] = [_CarInfo() for _ in range(num_cars)]
 
+    def get_leader(self) -> _CarInfo:
+        assert len(self._cars) > 0
+        return max(self._cars, key=lambda c: len(c.tiles_visited))
+
+    def get_last(self) -> _CarInfo:
+        assert len(self._cars) > 0
+        return min(self._cars, key=lambda c: len(c.tiles_visited))
+
+    def get_enclosing_rect(self) -> tuple[float, float, float, float]:
+        assert len(self._cars) > 0
+        min_x = min(self._cars, key=lambda c: c.position[0]).position[0]
+        min_y = min(self._cars, key=lambda c: c.position[1]).position[1]
+        max_x = max(self._cars, key=lambda c: c.position[0]).position[0]
+        max_y = max(self._cars, key=lambda c: c.position[1]).position[1]
+        return (min_x, min_y, max_x - min_x, max_y - min_y)
+
     def reset(self, world, track):
         for car in self._cars:
             car.reset(world, track)
