@@ -23,7 +23,7 @@ except ImportError as e:
     raise DependencyNotInstalled(
         'pygame is not installed, run `pip install "gymnasium[box2d]"`'
     ) from e
-from .cars import MultiAgentCars
+from .cars import MultiAgentCars, LeaderBoard
 from .config import (
     STATE_W,
     STATE_H,
@@ -143,6 +143,7 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
             shape=Box2D.b2.polygonShape(vertices=[(0, 0), (1, 0), (1, -1), (0, -1)])
         )
         self.cars = MultiAgentCars(num_cars)
+        self.leaderboard = LeaderBoard(self.cars)
 
         self.possible_agents = [f"car_{i}" for i in range(num_cars)]
         self.observation_spaces = {
@@ -189,6 +190,7 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
                 break
             gymnasium.logger.warn("Failed to generate track, retrying...")
         self.cars.reset(self.world, self.track)
+        self.leaderboard.update()
 
         if self.render_mode == "human":
             self.render()
@@ -197,6 +199,7 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
 
     def step(self, actions: Union[dict, None]):
         self.cars.apply_actions(actions)
+        self.leaderboard.update()
         self.world.Step(1.0 / FPS, 6 * 30, 2 * 30)
 
         observations = self._render("state_pixels")
@@ -265,7 +268,7 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
                 self.screen = pygame.display.set_mode((WINDOW_W, WINDOW_H))
             main_surface = pygame.Surface((WINDOW_W, WINDOW_H))
             # computing transformations
-            angle = -(self.cars.get_leader().angle + self.cars.get_last().angle) / 2
+            angle = -(self.leaderboard[0].angle + self.leaderboard[-1].angle) / 2
             min_x, min_y, width, height = self.cars.get_enclosing_rect()
             zoom = 550 / max(1, max((width), (height)))
             scroll_x = -(min_x + width / 2) * zoom
@@ -302,6 +305,20 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
                     WINDOW_H - WINDOW_H * 2.5 / 40.0 - i * 5 * (WINDOW_H / 40.0),
                 )
                 main_surface.blit(reward_text, reward_text_rect)
+
+                font = pygame.font.Font(pygame.font.get_default_font(), 21)
+                pos_text = font.render(
+                    f"Pos: {self.leaderboard.get_position(car) + 1}/{len(self.cars)}",
+                    True,
+                    (255, 255, 255),
+                    None,
+                )
+                pos_text_rect = pos_text.get_rect()
+                pos_text_rect.center = (
+                    WINDOW_W / 3 - 80,
+                    WINDOW_H - WINDOW_H * 4.2 / 40.0 - i * 5 * (WINDOW_H / 40.0),
+                )
+                main_surface.blit(pos_text, pos_text_rect)
 
                 x_start = WINDOW_W * 4 / 6 + i % 2 * WINDOW_W / 6
                 y_start = i // 2 * WINDOW_H / 4

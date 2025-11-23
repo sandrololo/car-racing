@@ -242,14 +242,6 @@ class MultiAgentCars:
     def __init__(self, num_cars: int):
         self._cars: list[_CarInfo] = [_CarInfo() for _ in range(num_cars)]
 
-    def get_leader(self) -> _CarInfo:
-        assert len(self._cars) > 0
-        return max(self._cars, key=lambda c: len(c.tiles_visited))
-
-    def get_last(self) -> _CarInfo:
-        assert len(self._cars) > 0
-        return min(self._cars, key=lambda c: len(c.tiles_visited))
-
     def get_enclosing_rect(self) -> tuple[float, float, float, float]:
         assert len(self._cars) > 0
         min_x = min(self._cars, key=lambda c: c.position[0]).position[0]
@@ -350,3 +342,31 @@ class MultiAgentCars:
 
     def __len__(self):
         return len(self._cars)
+
+
+class LeaderBoard:
+    def __init__(self, cars: MultiAgentCars):
+        self.cars = cars
+        self.leaderboard = []
+
+    def update(self):
+        self.leaderboard = sorted(
+            list(self.cars),
+            key=lambda car: (
+                car.lap_count,
+                list(car.tiles_visited)[-1] if len(car.tiles_visited) > 0 else -1,
+            ),
+            reverse=True,
+        )
+
+    def get_position(self, car: _CarInfo) -> int:
+        for idx, c in enumerate(self.leaderboard):
+            if c == car:
+                return idx
+        return -1
+
+    def __iter__(self):
+        return iter(self.leaderboard)
+
+    def __getitem__(self, index: int) -> _CarInfo:
+        return self.leaderboard[index]
