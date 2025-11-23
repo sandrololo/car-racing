@@ -28,7 +28,7 @@ except ImportError as e:
     ) from e
 
 from .singleagentwrappers import IncreasingTimeLimit
-import config as training_config
+import single_agent_config as training_config
 
 
 def _preprocess_obs(obs):

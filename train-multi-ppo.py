@@ -18,7 +18,7 @@ from environments.multiagent.multiagentwrappers import (
     NormalizeReward,
 )
 from wandbvideocallback import MultiAgentWandbVideoCallback
-import config as training_config
+import multi_agent_config as training_config
 
 
 class WrappedEnv(MultiAgentEnvWrapper):
