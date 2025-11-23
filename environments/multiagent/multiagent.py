@@ -63,7 +63,7 @@ class FrictionAndCrashDetector(Box2D.b2.contactListener):
         if u1 and "car_id" in u1.__dict__ and u2 and "car_id" in u2.__dict__:
             for car in self.env.cars:
                 if car.id == u1.id or car.id == u2.id:
-                    car.reward -= 1000.0
+                    car.reward -= 100.0
 
     def _tile_contact(self, contact, begin):
         tile = None
