@@ -308,9 +308,8 @@ class MultiAgentCars:
         H: Union[int, float],
     ):
         if isinstance(surface, list):
-            for idx, surf in enumerate(surface):
-                for car in self._cars:
-                    car.render_indicators(render_mode, idx, surf, W, H)
+            for idx, car in enumerate(self._cars):
+                self._cars[idx].render_indicators(render_mode, 0, surface[idx], W, H)
         else:
             for idx, car in enumerate(self._cars):
                 car.render_indicators(render_mode, idx, surface, W, H)
