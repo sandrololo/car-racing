@@ -111,7 +111,7 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
     """
     Multi-agent version of the CarRacing environment.
     It has the same mechanics. Each observation is the perspective of a car.
-    The rewards are the same except that collisions between cars are punished with -1000.
+    The rewards are the same except that collisions between cars are punished with -100.
     """
 
     metadata = {
