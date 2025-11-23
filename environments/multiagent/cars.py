@@ -20,7 +20,7 @@ except ImportError as e:
 from .config import FPS, PLAYFIELD, WINDOW_H, WINDOW_W
 
 
-class _CarInfo:
+class _Car:
     car_count = 0
 
     def __init__(self):
@@ -32,9 +32,9 @@ class _CarInfo:
         self.tiles_visited = set()
         self.fuel_spent = 0.0
         self.lap_count: int = 0
-        self.count = _CarInfo.car_count
+        self.count = _Car.car_count
         self.id = f"car_{self.count}"
-        _CarInfo.car_count += 1
+        _Car.car_count += 1
         self.friction_limit = 1000000 * CAR_SIZE * CAR_SIZE
         self.engine_power = 100000000 * CAR_SIZE * CAR_SIZE
 
@@ -334,7 +334,7 @@ class _CarInfo:
 
 class MultiAgentCars:
     def __init__(self, num_cars: int):
-        self._cars: list[_CarInfo] = [_CarInfo() for _ in range(num_cars)]
+        self._cars: list[_Car] = [_Car() for _ in range(num_cars)]
 
     def get_enclosing_rect(self) -> tuple[float, float, float, float]:
         assert len(self._cars) > 0
@@ -431,7 +431,7 @@ class MultiAgentCars:
     def __iter__(self):
         return iter(self._cars)
 
-    def __getitem__(self, index: int) -> _CarInfo:
+    def __getitem__(self, index: int) -> _Car:
         return self._cars[index]
 
     def __len__(self):
@@ -453,7 +453,7 @@ class LeaderBoard:
             reverse=True,
         )
 
-    def get_position(self, car: _CarInfo) -> int:
+    def get_position(self, car: _Car) -> int:
         for idx, c in enumerate(self.leaderboard):
             if c == car:
                 return idx
@@ -462,5 +462,5 @@ class LeaderBoard:
     def __iter__(self):
         return iter(self.leaderboard)
 
-    def __getitem__(self, index: int) -> _CarInfo:
+    def __getitem__(self, index: int) -> _Car:
         return self.leaderboard[index]
