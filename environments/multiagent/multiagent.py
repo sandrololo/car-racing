@@ -5,7 +5,6 @@ from ray.rllib.env.multi_agent_env import MultiAgentEnv
 from gymnasium.error import DependencyNotInstalled
 import gymnasium
 from gymnasium import spaces
-from gymnasium import wrappers
 
 try:
     import Box2D

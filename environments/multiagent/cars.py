@@ -8,7 +8,6 @@ try:
     # As pygame is necessary for using the environment (reset and step) even without a render mode
     #   therefore, pygame is a necessary import for the environment.
     import pygame
-    from pygame import gfxdraw
 except ImportError as e:
     raise DependencyNotInstalled(
         'pygame is not installed, run `pip install "gymnasium[box2d]"`'
