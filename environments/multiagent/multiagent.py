@@ -239,7 +239,9 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
             self._render_road(surface, zoom, trans, angle)
 
             draw_tyre_marks = mode not in ["state_pixels_list", "state_pixels"]
-            self.cars.draw(surface, zoom, trans, angle, draw_tyre_marks)
+            self.cars.draw(
+                surface, zoom, trans, angle, draw_tyre_marks, draw_number=False
+            )
         self.surfaces = [
             pygame.transform.flip(surface, False, True) for surface in self.surfaces
         ]
@@ -272,7 +274,7 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
             trans = (WINDOW_W / 2 + trans[0], WINDOW_H / 2 + trans[1])
 
             self._render_road(main_surface, zoom, trans, angle)
-            self.cars.draw(main_surface, zoom, trans, angle, True)
+            self.cars.draw(main_surface, zoom, trans, angle, True, draw_number=True)
 
             # showing stats
             main_surface = pygame.transform.flip(main_surface, False, True)

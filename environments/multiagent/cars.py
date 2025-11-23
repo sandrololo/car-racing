@@ -144,6 +144,31 @@ class _CarInfo:
                 surface, color=p.color, points=poly, width=2, closed=False
             )
 
+    def draw_number(
+        self,
+        surface: pygame.Surface,
+        zoom: float,
+        view_trans: tuple[float, float],
+        view_angle: float,
+    ):
+        font_size = int(1.6 * zoom)
+        font = pygame.font.Font(pygame.font.get_default_font(), font_size)
+        number_surface = font.render(str(self.count), True, (255, 255, 255))
+        number_surface = pygame.transform.rotate(
+            number_surface, np.rad2deg(self.angle + view_angle)
+        )
+        number_surface = pygame.transform.flip(number_surface, False, True)
+
+        pos_offset = pygame.math.Vector2(0, -0.6).rotate_rad(self.angle)
+        pos_number = pygame.math.Vector2(self.position) + pos_offset
+        pos_number = pos_number.rotate_rad(view_angle)
+        number_text_rect = number_surface.get_rect()
+        number_text_rect.center = (
+            pos_number[0] * zoom + view_trans[0],
+            pos_number[1] * zoom + view_trans[1],
+        )
+        surface.blit(number_surface, number_text_rect)
+
     def render_indicators(self, render_mode, idx, surface, W, H):
         s = W / 40.0
         h = H / 40.0
@@ -293,12 +318,15 @@ class MultiAgentCars:
         trans: tuple[float, float],
         angle: float,
         tyre_marks: bool = True,
+        draw_number: bool = False,
     ):
         if tyre_marks:
             for car in self._cars:
                 car.draw_tyre_marks(surface, zoom, angle, trans)
         for car in self._cars:
             car.draw(surface, zoom, trans, angle, False)
+            if draw_number:
+                car.draw_number(surface, zoom, trans, angle)
 
     def render_indicators(
         self,
