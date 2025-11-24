@@ -91,8 +91,7 @@ class CarConfig:
         )
         return config_text_surf
 
-    @property
-    def __dict__(self) -> dict:
+    def to_dict(self) -> dict:
         return {
             "engine_power": self.engine_power.name,
             "tyre_type": self.tyre_type.name,
@@ -145,8 +144,7 @@ class _Car:
     def config(self) -> CarConfig:
         return self._config
 
-    @property
-    def __dict__(self) -> dict:
+    def to_dict(self) -> dict:
         return {
             "car_id": self.id,
             "position": self.position,
@@ -157,7 +155,7 @@ class _Car:
             "tiles_visited": self.tiles_visited,
             "fuel_spent": self.fuel_spent,
             "lap_count": self.lap_count,
-            "config": self.config.__dict__,
+            "config": self.config.to_dict(),
         }
 
     def get_translation(self, zoom: float) -> tuple[float, float]:
