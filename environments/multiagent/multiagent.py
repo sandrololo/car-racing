@@ -270,7 +270,7 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
             # computing transformations
             angle = -(self.leaderboard[0].angle + self.leaderboard[-1].angle) / 2
             min_x, min_y, width, height = self.cars.get_enclosing_rect()
-            zoom = 550 / max(1, max((width), (height)))
+            zoom = min(ZOOM * SCALE, 550 / max(1, max((width), (height))))
             scroll_x = -(min_x + width / 2) * zoom
             scroll_y = -(min_y + height / 2) * zoom
             trans = pygame.math.Vector2((scroll_x, scroll_y)).rotate_rad(angle)
