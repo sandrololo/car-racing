@@ -43,8 +43,8 @@ class CarConfig:
         engine_power: EnginePower = EnginePower.MEDIUM,
         tyre_type: TyreType = TyreType.MEDIUM,
     ):
-        self._engine_power = engine_power
-        self._tyre_type = tyre_type
+        self._engine_power: EnginePower = engine_power
+        self._tyre_type: TyreType = tyre_type
 
     @property
     def engine_power(self) -> EnginePower:
@@ -144,7 +144,8 @@ class _Car:
     def config(self) -> CarConfig:
         return self._config
 
-    def to_dict(self) -> dict:
+    @property
+    def __dict__(self) -> dict:
         return {
             "car_id": self.id,
             "position": self.position,
