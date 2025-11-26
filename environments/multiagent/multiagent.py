@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from typing import List, Optional, Union
 import math
 import numpy as np
 from ray.rllib.env.multi_agent_env import MultiAgentEnv
@@ -145,7 +145,8 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
         self.cars = MultiAgentCars(num_cars, car_configs)
         self.leaderboard = LeaderBoard(self.cars)
 
-        self.possible_agents = [f"car_{i}" for i in range(num_cars)]
+        self.possible_agents: List[str] = [f"car_{i}" for i in range(num_cars)]
+        self.agents: List[str] = self.possible_agents.copy()
         self.observation_spaces = {
             agent: spaces.Box(
                 low=0, high=255, shape=(STATE_H, STATE_W, 3), dtype=np.uint8
@@ -184,6 +185,8 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
         self.t = 0.0
         self.road_poly = []
 
+        self.agents = self.possible_agents.copy()
+
         while True:
             success = self._create_track()
             if success:
@@ -206,6 +209,14 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
         obs_d, rew_d, terminated_d, truncated_d, info_d = self.cars.step(
             self.track, actions, observations
         )
+        for car in self.cars:
+            if (
+                not car.id in terminated_d
+                or not car.id in truncated_d
+                or terminated_d[car.id]
+                or truncated_d[car.id]
+            ):
+                self.agents.remove(car.id)
         if self.render_mode == "human":
             self.render()
         return obs_d, rew_d, terminated_d, truncated_d, info_d

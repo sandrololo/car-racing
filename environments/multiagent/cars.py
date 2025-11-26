@@ -452,8 +452,10 @@ class MultiAgentCars:
         rew_d = {}
         terminated_d = {}
         truncated_d = {}
-        if actions is not None:  # First step without action, called from reset()
-            for i, car in enumerate(self._cars):
+        for i, car in enumerate(self._cars):
+            terminated_d[car.id] = car.terminated
+            truncated_d[car.id] = car.truncated
+            if actions is not None:  # First step without action, called from reset()
                 if not car.terminated or car.truncated:
                     info_d[car.id] = {}
                     car.reward -= 0.1
@@ -473,8 +475,6 @@ class MultiAgentCars:
                         step_rewards[i] = -100
                     obs_d[car.id] = observations[i]
                     rew_d[car.id] = step_rewards[i]
-                    terminated_d[car.id] = car.terminated
-                    truncated_d[car.id] = car.truncated
         terminated_d["__all__"] = all(terminated_d.values())
         truncated_d["__all__"] = all(truncated_d.values())
         return obs_d, rew_d, terminated_d, truncated_d, info_d
