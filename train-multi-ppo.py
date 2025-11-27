@@ -125,7 +125,7 @@ ppo_config = (
                 "lap_complete_percent": 0.95,
                 "num_cars": training_config.NUM_CARS,
                 "cars_configs": training_config.CAR_CONFIGS,
-                "max_timesteps": training_config.TRAIN_MAX_TIMESTEPS,
+                "max_timesteps": training_config.EVAL_MAX_TIMESTEPS,
                 "normalize_rewards": False,
                 "record_video": True,
                 "render_mode": "rgb_array",
