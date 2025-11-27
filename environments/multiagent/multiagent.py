@@ -87,14 +87,15 @@ class FrictionAndCrashDetector(Box2D.b2.contactListener):
                 car_obj = obj
                 for env_car in self.env.cars:
                     if env_car.id == car_obj.id:
-                        env_car.tiles_visited.add(tile.idx)
-                        env_car.reward += 1000.0 / len(self.env.track)
-                        if (
-                            tile.idx == 0
-                            and len(env_car.tiles_visited) / len(self.env.track)
-                            > self.lap_complete_percent
-                        ):
-                            env_car.new_lap()
+                        if not tile.idx in env_car.tiles_visited:
+                            env_car.tiles_visited.add(tile.idx)
+                            env_car.reward += 1000.0 / len(self.env.track)
+                            if (
+                                tile.idx == 0
+                                and len(env_car.tiles_visited) / len(self.env.track)
+                                > self.lap_complete_percent
+                            ):
+                                env_car.new_lap()
             return
         wheel = obj
         # so that the wheel can keep track of which tiles it is touching to calculate friction
