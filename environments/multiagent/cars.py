@@ -144,8 +144,7 @@ class _Car:
     def config(self) -> CarConfig:
         return self._config
 
-    @property
-    def __dict__(self) -> dict:
+    def to_dict(self) -> dict:
         return {
             "car_id": self.id,
             "position": self.position,
@@ -457,7 +456,7 @@ class MultiAgentCars:
             terminated_d[car.id] = car.terminated
             truncated_d[car.id] = car.truncated
             if actions is not None:  # First step without action, called from reset()
-                if not car.terminated or car.truncated:
+                if not car.terminated and not car.truncated:
                     info_d[car.id] = {}
                     car.reward -= 0.1
                     # We actually don't want to count fuel spent, we want car to be faster.
