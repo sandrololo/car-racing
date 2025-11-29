@@ -144,6 +144,7 @@ class _Car:
     def config(self) -> CarConfig:
         return self._config
 
+    @property
     def __dict__(self) -> dict:
         return {
             "car_id": self.id,
