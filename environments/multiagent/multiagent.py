@@ -44,10 +44,12 @@ from .config import (
 
 
 class FrictionAndCrashDetector(Box2D.b2.contactListener):
-    def __init__(self, env, lap_complete_percent):
+    def __init__(self, env, lap_complete_percent, first_tile_visitor_reward_factor):
         Box2D.b2.contactListener.__init__(self)
         self.env = env
         self.lap_complete_percent = lap_complete_percent
+        self.first_tile_visitor_reward_factor = first_tile_visitor_reward_factor
+        self._tiles_visited = set()
 
     def BeginContact(self, contact):
         self._crash_contact(contact)
@@ -89,7 +91,11 @@ class FrictionAndCrashDetector(Box2D.b2.contactListener):
                     if env_car.id == car_obj.id:
                         if not tile.idx in env_car.tiles_visited:
                             env_car.tiles_visited.add(tile.idx)
-                            env_car.reward += 1000.0 / len(self.env.track)
+                            reward = 1000.0 / len(self.env.track)
+                            if tile.idx not in self._tiles_visited:
+                                self._tiles_visited.add(tile.idx)
+                                reward *= self.first_tile_visitor_reward_factor
+                            env_car.reward += reward
                             if (
                                 tile.idx == 0
                                 and len(env_car.tiles_visited) / len(self.env.track)
@@ -124,6 +130,9 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
         car_configs = config.get("car_configs", [CarConfig.default()] * num_cars)
         self.lap_complete_percent = config.get("lap_complete_percent", 0.95)
         self.render_mode = config.get("render_mode", None)
+        self.first_tile_visitor_reward_factor = config.get(
+            "first_tile_visitor_reward_factor", 1.0
+        )
 
         self.isopen = True
 
@@ -134,7 +143,7 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
         self.grass_color = np.array([102, 230, 102])
 
         self.contactListener_keepref = FrictionAndCrashDetector(
-            self, self.lap_complete_percent
+            self, self.lap_complete_percent, self.first_tile_visitor_reward_factor
         )
         self.world = Box2D.b2World((0, 0), contactListener=self.contactListener_keepref)
         self.screen: Optional[pygame.Surface] = None
@@ -180,7 +189,7 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
         super().reset(seed=seed)
         self._destroy()
         self.world.contactListener_bug_workaround = FrictionAndCrashDetector(
-            self, self.lap_complete_percent
+            self, self.lap_complete_percent, self.first_tile_visitor_reward_factor
         )
         self.world.contactListener = self.world.contactListener_bug_workaround
         self.t = 0.0

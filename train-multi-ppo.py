@@ -58,6 +58,7 @@ ppo_config = (
         WrappedEnv,
         env_config={
             "lap_complete_percent": 0.95,
+            "first_tile_visitor_reward_factor": training_config.FIRST_TILE_VISITOR_REWARD_FACTOR,
             "num_cars": training_config.NUM_CARS,
             "cars_configs": training_config.CAR_CONFIGS,
             "max_timesteps": training_config.TRAIN_MAX_TIMESTEPS,
@@ -123,6 +124,7 @@ ppo_config = (
         evaluation_config={
             "env_config": {
                 "lap_complete_percent": 0.95,
+                "first_tile_visitor_reward_factor": training_config.FIRST_TILE_VISITOR_REWARD_FACTOR,
                 "num_cars": training_config.NUM_CARS,
                 "cars_configs": training_config.CAR_CONFIGS,
                 "max_timesteps": training_config.EVAL_MAX_TIMESTEPS,

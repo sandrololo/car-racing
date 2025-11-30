@@ -51,6 +51,7 @@ if __name__ == "__main__":
 
     env = MultiAgentCarRacingEnv(
         config={
+            "first_tile_visitor_reward_factor": 1.5,
             "render_mode": "human",
             "num_cars": NUM_CARS,
             "car_configs": CAR_CONFIGS,
