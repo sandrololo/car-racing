@@ -145,31 +145,43 @@ class RecordVideo(MultiAgentEnvWrapper):
         self.record_video.__del__()
 
 
-class TimeLimit(MultiAgentEnvWrapper, gym.utils.RecordConstructorArgs):
+class IncreasingTimeLimit(MultiAgentEnvWrapper, gym.utils.RecordConstructorArgs):
     """Limits the number of steps for an environment through truncating the environment if a maximum number of timesteps is exceeded."""
 
     def __init__(
         self,
         env: MultiAgentEnv,
-        max_episode_steps: int,
+        max_episode_steps_start: int,
+        max_episode_steps_increase: float,
     ):
         assert (
-            isinstance(max_episode_steps, int) and max_episode_steps > 0
-        ), f"Expect the `max_episode_steps` to be positive, actually: {max_episode_steps}"
-
+            isinstance(max_episode_steps_start, int) and max_episode_steps_start > 0
+        ), f"Expect the `max_episode_steps_start` to be positive, actually: {max_episode_steps_start}"
+        assert (
+            isinstance(max_episode_steps_increase, (int, float))
+            and max_episode_steps_increase > 0
+        ), f"Expect the `max_episode_steps_increase` to be positive, actually: {max_episode_steps_increase}"
         gym.utils.RecordConstructorArgs.__init__(
-            self, max_episode_steps=max_episode_steps
+            self,
+            max_episode_steps=max_episode_steps_start,
+            max_episode_steps_increase=max_episode_steps_increase,
         )
         super().__init__(env)
 
-        self._max_episode_steps = max_episode_steps
+        self._max_episode_steps_start = max_episode_steps_start
+        self._max_episode_steps_increase = max_episode_steps_increase
         self._elapsed_steps = None
+        self._elapsed_episodes = 0
 
     def step(self, action: ActType) -> tuple[ObsType, dict, dict, dict, dict]:
         observation, reward, terminated, truncated, info = self.env.step(action)
         self._elapsed_steps += 1
 
-        if self._elapsed_steps >= self._max_episode_steps:
+        if (
+            self._elapsed_steps
+            >= self._max_episode_steps_start
+            + self._max_episode_steps_increase * self._elapsed_episodes
+        ):
             for key in observation.keys():
                 truncated[key] = True
             truncated["__all__"] = True
@@ -184,7 +196,7 @@ class TimeLimit(MultiAgentEnvWrapper, gym.utils.RecordConstructorArgs):
 
     @property
     def spec(self) -> EnvSpec:
-        """Modifies the environment spec to include the `max_episode_steps=self._max_episode_steps`."""
+        """Modifies the environment spec to include the `max_episode_steps_start` and `max_episode_steps_increase`."""
         if self._cached_spec is not None:
             return self._cached_spec
 
@@ -192,7 +204,8 @@ class TimeLimit(MultiAgentEnvWrapper, gym.utils.RecordConstructorArgs):
         if env_spec is not None:
             try:
                 env_spec = deepcopy(env_spec)
-                env_spec.max_episode_steps = self._max_episode_steps
+                env_spec.max_episode_steps_start = self._max_episode_steps_start
+                env_spec.max_episode_steps_increase = self._max_episode_steps_increase
             except Exception as e:
                 gym.logger.warn(
                     f"An exception occurred ({e}) while copying the environment spec={env_spec}"

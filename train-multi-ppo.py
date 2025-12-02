@@ -12,7 +12,7 @@ from environments.multiagent.multiagentwrappers import (
     MultiAgentEnvWrapper,
     RecordVideo,
     GrayscaleObservation,
-    TimeLimit,
+    IncreasingTimeLimit,
     NormalizeObservation,
     FrameStackObservation,
     NormalizeReward,
@@ -28,7 +28,8 @@ class WrappedEnv(MultiAgentEnvWrapper):
         *args,
         **kwargs,
     ):
-        max_timesteps = config.get("max_timesteps", None)
+        max_timesteps_start = config.get("max_timesteps_start", None)
+        max_timesteps_increase = config.get("max_timesteps_increase", 0)
         record_video = config.get("record_video", False)
         normalize_rewards = config.get("normalize_rewards", False)
         self.env = MultiAgentCarRacingEnv(config, *args, **kwargs)
@@ -42,8 +43,10 @@ class WrappedEnv(MultiAgentEnvWrapper):
                 == 0,
                 name_prefix="car-racing-env",
             )
-        if max_timesteps is not None:
-            self.env = TimeLimit(self.env, max_timesteps)
+        if max_timesteps_start is not None:
+            self.env = IncreasingTimeLimit(
+                self.env, max_timesteps_start, max_timesteps_increase
+            )
         self.env = GrayscaleObservation(self.env)
         self.env = FrameStackObservation(self.env, training_config.OBS_FRAME_STACK)
         if normalize_rewards is True:
@@ -61,7 +64,8 @@ ppo_config = (
             "first_tile_visitor_reward_factor": training_config.FIRST_TILE_VISITOR_REWARD_FACTOR,
             "num_cars": training_config.NUM_CARS,
             "cars_configs": training_config.CAR_CONFIGS,
-            "max_timesteps": training_config.TRAIN_MAX_TIMESTEPS,
+            "max_timesteps_start": training_config.TRAIN_MAX_TIMESTEPS_START,
+            "max_timesteps_increase": training_config.TRAIN_MAX_TIMESTEPS_PER_EPISODE_INCREASE,
             "normalize_rewards": training_config.NORMALIZE_REWARDS,
             "record_video": False,
         },
@@ -127,7 +131,7 @@ ppo_config = (
                 "first_tile_visitor_reward_factor": training_config.FIRST_TILE_VISITOR_REWARD_FACTOR,
                 "num_cars": training_config.NUM_CARS,
                 "cars_configs": training_config.CAR_CONFIGS,
-                "max_timesteps": training_config.EVAL_MAX_TIMESTEPS,
+                "TRAIN_MAX_TIMESTEPS_START": training_config.EVAL_MAX_TIMESTEPS,
                 "normalize_rewards": False,
                 "record_video": True,
                 "render_mode": "rgb_array",
