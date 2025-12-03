@@ -91,7 +91,7 @@ class FrictionAndCrashDetector(Box2D.b2.contactListener):
                     if env_car.id == car_obj.id:
                         if not tile.idx in env_car.tiles_visited:
                             env_car.tiles_visited.add(tile.idx)
-                            reward = 1000.0 / len(self.env.track)
+                            reward = 500.0 / len(self.env.track)
                             if tile.idx not in self._tiles_visited:
                                 self._tiles_visited.add(tile.idx)
                                 reward *= self.first_tile_visitor_reward_factor
