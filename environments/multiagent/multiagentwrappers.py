@@ -190,8 +190,9 @@ class IncreasingTimeLimit(MultiAgentEnvWrapper, gym.utils.RecordConstructorArgs)
 
     def reset(
         self, *, seed: int = None, options: dict[str, Any] = None
-    ) -> tuple[ObsType, dict]:
+    ) -> tuple[ObsType, dict[str, Any]]:
         self._elapsed_steps = 0
+        self._elapsed_episodes += 1
         return super().reset(seed=seed, options=options)
 
     @property
