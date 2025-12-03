@@ -131,7 +131,7 @@ ppo_config = (
                 "first_tile_visitor_reward_factor": training_config.FIRST_TILE_VISITOR_REWARD_FACTOR,
                 "num_cars": training_config.NUM_CARS,
                 "cars_configs": training_config.CAR_CONFIGS,
-                "TRAIN_MAX_TIMESTEPS_START": training_config.EVAL_MAX_TIMESTEPS,
+                "max_timesteps_start": training_config.EVAL_MAX_TIMESTEPS,
                 "normalize_rewards": False,
                 "record_video": True,
                 "render_mode": "rgb_array",
