@@ -170,6 +170,7 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
             )  # steer, gas, brake
             for agent in self.possible_agents
         }
+        self.human_render_mode_camera_angle: Optional[float] = None
         super().__init__()
 
     def _destroy(self):
@@ -204,6 +205,7 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
             gymnasium.logger.warn("Failed to generate track, retrying...")
         self.cars.reset(self.world, self.track)
         self.leaderboard.update()
+        self.human_render_mode_camera_angle = None
 
         if self.render_mode == "human":
             self.render()
@@ -306,16 +308,32 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
             )
             leading_angle = self.track[leading_car_track_tile_idx][1]
             last_angle = self.track[last_car_track_tile_idx][1]
-            angle = -(leading_angle + last_angle) / 2
+            current_angle = -(leading_angle + last_angle) / 2
+            if self.human_render_mode_camera_angle is None:
+                self.human_render_mode_camera_angle = current_angle
+            self.human_render_mode_camera_angle += (
+                current_angle - self.human_render_mode_camera_angle
+            ) * 0.03
             min_x, min_y, width, height = self.cars.get_enclosing_rect()
             zoom = min(ZOOM * SCALE, 420 / max(1, max((width), (height))))
             scroll_x = -(min_x + width / 2) * zoom
             scroll_y = -(min_y + height / 2) * zoom
-            trans = pygame.math.Vector2((scroll_x, scroll_y)).rotate_rad(angle)
+            trans = pygame.math.Vector2((scroll_x, scroll_y)).rotate_rad(
+                self.human_render_mode_camera_angle
+            )
             trans = (WINDOW_W / 2 + trans[0], WINDOW_H / 2 + trans[1])
 
-            self._render_road(main_surface, zoom, trans, angle)
-            self.cars.draw(main_surface, zoom, trans, angle, True, draw_number=True)
+            self._render_road(
+                main_surface, zoom, trans, self.human_render_mode_camera_angle
+            )
+            self.cars.draw(
+                main_surface,
+                zoom,
+                trans,
+                self.human_render_mode_camera_angle,
+                True,
+                draw_number=True,
+            )
 
             # showing stats
             main_surface = pygame.transform.flip(main_surface, False, True)
