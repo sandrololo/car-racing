@@ -1,6 +1,6 @@
 import pygame
 import numpy as np
-from environments import MultiAgentCarRacingEnv
+from environments.multiagent import MultiAgentCarRacingEnv
 from environments.multiagent.cars import CarConfig, EnginePower, TyreType
 
 NUM_CARS = 8
