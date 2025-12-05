@@ -536,7 +536,7 @@ class LeaderBoard:
             list(self.cars),
             key=lambda car: (
                 car.lap_count,
-                list(car.tiles_visited)[-1] if len(car.tiles_visited) > 0 else -1,
+                max(list(car.tiles_visited)) if len(car.tiles_visited) > 0 else -1,
             ),
             reverse=True,
         )
