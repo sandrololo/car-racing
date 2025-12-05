@@ -18,7 +18,7 @@ except ImportError as e:
         'pygame is not installed, run `pip install "gymnasium[box2d]"`'
     ) from e
 
-from .config import FPS, PLAYFIELD, WINDOW_H, WINDOW_W
+from .config import FPS, PLAYFIELD
 
 
 class EnginePower(Enum):
@@ -55,7 +55,7 @@ class CarConfig:
         return self._tyre_type
 
     def render(self) -> pygame.Surface:
-        font = pygame.font.Font(pygame.font.get_default_font(), 12)
+        font = pygame.font.Font(pygame.font.get_default_font(), 9)
         power_color = (
             (255, 0, 0)
             if self.engine_power == EnginePower.HIGH
@@ -159,11 +159,13 @@ class _Car:
             "config": self.config.to_dict(),
         }
 
-    def get_translation(self, zoom: float) -> tuple[float, float]:
+    def get_translation(
+        self, zoom: float, surface_width: int, surface_height: int
+    ) -> tuple[float, float]:
         scroll_x = -(self.position[0]) * zoom
         scroll_y = -(self.position[1]) * zoom
         trans = pygame.math.Vector2((scroll_x, scroll_y)).rotate_rad(-self.angle)
-        trans = (WINDOW_W / 2 + trans[0], WINDOW_H / 4 + trans[1])
+        trans = (surface_width / 2 + trans[0], surface_height / 4 + trans[1])
         return trans
 
     def reset(self, world, track):

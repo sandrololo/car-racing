@@ -2,14 +2,14 @@ import math
 
 STATE_W = 96  # less than Atari 160x192
 STATE_H = 96
-WINDOW_W = 1600
-WINDOW_H = 800
+WINDOW_W = 1200
+WINDOW_H = 600
 
 SCALE = 6.0  # Track scale
 TRACK_RAD = 900 / SCALE  # Track is heavily morphed circle with this radius
 PLAYFIELD = 2000 / SCALE  # Game over boundary
 FPS = 50  # Frames per second
-ZOOM = 2.7  # Camera zoom
+ZOOM = 2.0  # Camera zoom
 
 TRACK_DETAIL_STEP = 21 / SCALE
 TRACK_TURN_RATE = 0.31
