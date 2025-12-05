@@ -7,8 +7,8 @@ from ray.rllib.core.rl_module.rl_module import RLModuleSpec
 from ray.air.integrations.wandb import WandbLoggerCallback
 from gymnasium.spaces import Box
 
-from environments import MultiAgentCarRacingEnv
-from environments.multiagent.multiagentwrappers import (
+from environments.multiagent import MultiAgentCarRacingEnv
+from environments.multiagent.wrappers import (
     MultiAgentEnvWrapper,
     RecordVideo,
     GrayscaleObservation,

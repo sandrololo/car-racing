@@ -27,7 +27,7 @@ except ImportError as e:
         'pygame is not installed, run `pip install "gymnasium[box2d]"`'
     ) from e
 
-from .singleagentwrappers import IncreasingTimeLimit
+from .wrappers import IncreasingTimeLimit
 import single_agent_config as training_config
 
 

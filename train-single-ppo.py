@@ -4,7 +4,7 @@ from ray.rllib.algorithms.ppo import PPOConfig
 from ray.rllib.core.rl_module.default_model_config import DefaultModelConfig
 from ray.air.integrations.wandb import WandbLoggerCallback
 
-from environments import SingleAgentCarRacingEnv
+from environments.singleagent import SingleAgentCarRacingEnv
 from wandbvideocallback import SingleAgentWandbVideoCallback
 import single_agent_config
 

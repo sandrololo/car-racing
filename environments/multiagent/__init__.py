@@ -1,2 +1,1 @@
-from .multiagent import MultiAgentCarRacingEnv
-from .multiagentwrappers import *
+from .environment import MultiAgentCarRacingEnv
