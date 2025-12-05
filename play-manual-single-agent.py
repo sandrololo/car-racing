@@ -1,6 +1,6 @@
 import numpy as np
 import pygame
-from environments import SingleAgentCarRacingEnv
+from environments.singleagent import SingleAgentCarRacingEnv
 
 if __name__ == "__main__":
     a = np.array([0.0, 0.0, 0.0])
