@@ -97,12 +97,15 @@ class CarConfig:
             "tyre_type": self.tyre_type.name,
         }
 
+    def __str__(self) -> str:
+        return f"CarConfig(engine_power={self.engine_power.name}, tyre_type={self.tyre_type.name})"
+
 
 class _Car:
-    car_count = 0
 
     def __init__(
         self,
+        id: int,
         config: CarConfig = CarConfig.default(),
     ):
         self.car = None
@@ -113,9 +116,8 @@ class _Car:
         self.tiles_visited = set()
         self.fuel_spent = 0.0
         self.lap_count: int = 0
-        self.count = _Car.car_count
+        self.count = id
         self.id = f"car_{self.count}"
-        _Car.car_count += 1
         self._config = config
         self.friction_limit = 1000000 * CAR_SIZE * CAR_SIZE * config.tyre_type.value
         self.engine_power = 100000000 * CAR_SIZE * CAR_SIZE * config.engine_power.value
@@ -424,7 +426,7 @@ class _Car:
 class MultiAgentCars:
     def __init__(self, num_cars: int, car_configs: list[CarConfig]):
         assert num_cars == len(car_configs)
-        self._cars: list[_Car] = [_Car(car_configs[i]) for i in range(num_cars)]
+        self._cars: list[_Car] = [_Car(i, car_configs[i]) for i in range(num_cars)]
 
     def get_enclosing_rect(self) -> tuple[float, float, float, float]:
         assert len(self._cars) > 0
