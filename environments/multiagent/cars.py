@@ -1,6 +1,6 @@
 import math
 from enum import Enum
-from typing import Union
+from typing import Optional, Union
 import numpy as np
 from gymnasium.envs.box2d.car_dynamics import (
     Car,
@@ -8,6 +8,7 @@ from gymnasium.envs.box2d.car_dynamics import (
     WHEEL_MOMENT_OF_INERTIA,
 )
 from gymnasium.error import DependencyNotInstalled
+from ray.rllib.utils.typing import MultiAgentDict, AgentID
 
 try:
     # As pygame is necessary for using the environment (reset and step) even without a render mode
@@ -108,6 +109,7 @@ class _Car:
         id: int,
         config: CarConfig = CarConfig.default(),
     ):
+        self.active = False
         self.car = None
         self.reward = 0.0
         self.prev_reward = 0.0
@@ -424,69 +426,88 @@ class _Car:
 
 
 class MultiAgentCars:
-    def __init__(self, num_cars: int, car_configs: list[CarConfig]):
-        assert num_cars == len(car_configs)
-        self._cars: list[_Car] = [_Car(i, car_configs[i]) for i in range(num_cars)]
+    def __init__(
+        self,
+        car_configs: list[CarConfig],
+        possible_agent_ids: list[AgentID],
+        active_agent_ids: list[AgentID],
+    ):
+        self._cars: MultiAgentDict = {
+            agent: _Car(i, car_configs[i]) for i, agent in enumerate(possible_agent_ids)
+        }
+        for id in active_agent_ids:
+            self._cars.get(id).active = True
+
+    def get(self, agent_id: AgentID) -> _Car:
+        return self._cars[agent_id]
 
     def get_enclosing_rect(self) -> tuple[float, float, float, float]:
-        assert len(self._cars) > 0
-        min_x = min(self._cars, key=lambda c: c.position[0]).position[0]
-        min_y = min(self._cars, key=lambda c: c.position[1]).position[1]
-        max_x = max(self._cars, key=lambda c: c.position[0]).position[0]
-        max_y = max(self._cars, key=lambda c: c.position[1]).position[1]
+        active_cars = self.get_active()
+        assert len(active_cars) > 0
+        min_x = min(active_cars, key=lambda c: c.position[0]).position[0]
+        min_y = min(active_cars, key=lambda c: c.position[1]).position[1]
+        max_x = max(active_cars, key=lambda c: c.position[0]).position[0]
+        max_y = max(active_cars, key=lambda c: c.position[1]).position[1]
         return (min_x, min_y, max_x - min_x, max_y - min_y)
 
     def reset(self, world, track):
-        for car in self._cars:
+        for car in self._cars.values():
             car.reset(world, track)
 
-    def apply_actions(self, actions: dict):
-        assert len(self._cars) > 0
+    def apply_actions(self, actions: Optional[MultiAgentDict] = None):
+        assert len(self.get_active()) > 0
         if actions is not None:
-            for car in self._cars:
-                act = actions.get(car.id, None)
-                if act is not None:
-                    car.apply_action(act)
-        for car in self._cars:
-            car.step(1.0 / FPS)
+            for agent, car in self._cars.items():
+                action = actions.get(agent, None)
+                if car.active and action is not None:
+                    car.apply_action(action)
+        for car in self._cars.values():
+            if car.active:
+                car.step(1.0 / FPS)
 
-    def step(self, track, actions: Union[dict, None], observations):
-        step_rewards = [0.0 for _ in range(len(self._cars))]
+    def step(self, track, actions: MultiAgentDict, observations: MultiAgentDict):
+        step_rewards = {agent: 0.0 for agent in self._cars.keys()}
         info_d = {}
         obs_d = {}
         rew_d = {}
         terminated_d = {}
         truncated_d = {}
-        for i, car in enumerate(self._cars):
-            if actions is not None:  # First step without action, called from reset()
+        for agent, car in self._cars.items():
+            car: _Car
+            if car.active:
                 if not car.terminated and not car.truncated:
-                    info_d[car.id] = {}
+                    info_d[agent] = {}
                     car.reward -= 0.1
                     # We actually don't want to count fuel spent, we want car to be faster.
                     # self.reward -=  10 * self.car.fuel_spent / ENGINE_POWER
                     car.fuel_spent = 0.0
-                    step_rewards[i] = car.reward - car.prev_reward
+                    step_rewards[agent] = car.reward - car.prev_reward
                     car.prev_reward = car.reward
                     if len(car.tiles_visited) == len(track) or car.lap_count >= 1:
                         # Termination due to finishing lap
                         car.terminated = True
-                        info_d[car.id]["lap_finished"] = True
+                        info_d[agent]["lap_finished"] = True
                     x, y = car.position
                     if abs(x) > PLAYFIELD or abs(y) > PLAYFIELD:
                         car.terminated = True
-                        info_d[car.id]["lap_finished"] = False
-                        step_rewards[i] = -100
-                    obs_d[car.id] = observations[i]
-                    rew_d[car.id] = step_rewards[i]
-            terminated_d[car.id] = car.terminated
-            truncated_d[car.id] = car.truncated
+                        info_d[agent]["lap_finished"] = False
+                        step_rewards[agent] = -100
+                    obs_d[agent] = observations[agent]
+                    rew_d[agent] = step_rewards[agent]
+                terminated_d[agent] = car.terminated
+                truncated_d[agent] = car.truncated
+            else:
+                obs_d[agent] = np.zeros_like(observations[list(self._cars.keys())[0]])
+                rew_d[agent] = 0.0
+                terminated_d[agent] = False
+                truncated_d[agent] = False
+                info_d[agent] = {}
         terminated_d["__all__"] = all(terminated_d.values())
         truncated_d["__all__"] = all(truncated_d.values())
         return obs_d, rew_d, terminated_d, truncated_d, info_d
 
     def destroy(self):
-        assert len(self._cars) > 0
-        for car in self._cars:
+        for car in self._cars.values():
             car.destroy()
 
     def draw(
@@ -499,35 +520,37 @@ class MultiAgentCars:
         draw_number: bool = False,
     ):
         if tyre_marks:
-            for car in self._cars:
-                car.draw_tyre_marks(surface, zoom, angle, trans)
-        for car in self._cars:
-            car.draw(surface, zoom, trans, angle, False)
-            if draw_number:
-                car.draw_number(surface, zoom, trans, angle)
+            for car in self._cars.values():
+                if car.active:
+                    car.draw_tyre_marks(surface, zoom, angle, trans)
+        for car in self._cars.values():
+            if car.active:
+                car.draw(surface, zoom, trans, angle, False)
+                if draw_number:
+                    car.draw_number(surface, zoom, trans, angle)
 
     def render_indicators(
         self,
         render_mode: str,
-        surface: Union[pygame.Surface, list[pygame.Surface]],
+        surface: Union[pygame.Surface, MultiAgentDict],
         W: Union[int, float],
         H: Union[int, float],
     ):
-        if isinstance(surface, list):
-            for idx, car in enumerate(self._cars):
-                self._cars[idx].render_indicators(render_mode, 0, surface[idx], W, H)
+        if isinstance(surface, dict):
+            for agent, surf in surface.items():
+                car = self.get(agent)
+                if car.active:
+                    car.render_indicators(render_mode, 0, surf, W, H)
         else:
-            for idx, car in enumerate(self._cars):
-                car.render_indicators(render_mode, idx, surface, W, H)
+            for idx, car in enumerate(self._cars.values()):
+                if car.active:
+                    car.render_indicators(render_mode, idx, surface, W, H)
 
-    def __iter__(self):
-        return iter(self._cars)
+    def get_all(self) -> list[_Car]:
+        return list(self._cars.values())
 
-    def __getitem__(self, index: int) -> _Car:
-        return self._cars[index]
-
-    def __len__(self):
-        return len(self._cars)
+    def get_active(self) -> list[_Car]:
+        return [car for car in self._cars.values() if car.active]
 
 
 class LeaderBoard:
@@ -537,7 +560,7 @@ class LeaderBoard:
 
     def update(self):
         self.leaderboard = sorted(
-            list(self.cars),
+            self.cars.get_active(),
             key=lambda car: (
                 car.lap_count,
                 max(list(car.tiles_visited)) if len(car.tiles_visited) > 0 else -1,

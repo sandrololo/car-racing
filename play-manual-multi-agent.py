@@ -73,7 +73,7 @@ if __name__ == "__main__":
             s, r, terminated, truncated, info = env.step(actions)
             if steps % 200 == 0 or terminated["__all__"] or truncated["__all__"]:
                 print(f"step {steps}")
-                for car in env.cars:
+                for car in env.cars.get_active():
                     print(f"reward={car.reward}, pos={car.car.hull.position}")
             steps += 1
             if terminated["__all__"] or truncated["__all__"] or restart or quit:

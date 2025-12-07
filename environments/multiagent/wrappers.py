@@ -3,6 +3,7 @@ from typing import Any, Final, SupportsFloat, Callable
 from copy import deepcopy
 import numpy as np
 from ray.rllib.env.multi_agent_env import MultiAgentEnv
+from ray.rllib.utils.typing import MultiAgentDict
 import gymnasium as gym
 from gymnasium import spaces
 from gymnasium.core import ActType, ObsType, WrapperObsType, WrapperActType
@@ -217,7 +218,7 @@ class IncreasingTimeLimit(MultiAgentEnvWrapper, gym.utils.RecordConstructorArgs)
         return env_spec
 
 
-def _preprocess_obs(obs: dict) -> dict:
+def _preprocess_obs(obs: MultiAgentDict) -> MultiAgentDict:
     """Convert uint8 observations to normalized float32."""
     normalized_obs = {}
     for key, value in obs.items():
@@ -248,7 +249,7 @@ class NormalizeObservation(TransformObservation, gym.utils.RecordConstructorArgs
         super().__init__(env, _preprocess_obs, new_observation_spaces)
 
 
-def _create_grayscale_observation(obs: dict) -> dict:
+def _create_grayscale_observation(obs: MultiAgentDict) -> MultiAgentDict:
     gray_obs = {}
     for key, value in obs.items():
         gray_obs[key] = np.sum(
@@ -331,7 +332,7 @@ class FrameStackObservation(MultiAgentEnvWrapper, gym.utils.RecordConstructorArg
                 [self.padding_value[key] for _ in range(self.stack_size)],
                 maxlen=self.stack_size,
             )
-            for key, value in env.observation_spaces.items()
+            for key in env.observation_spaces.keys()
         }
 
     def step(

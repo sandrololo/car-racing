@@ -1,7 +1,8 @@
-from typing import List, Optional, Union
+from typing import List, Optional
 import math
 import numpy as np
 from ray.rllib.env.multi_agent_env import MultiAgentEnv
+from ray.rllib.utils.typing import MultiAgentDict
 from gymnasium.error import DependencyNotInstalled
 import gymnasium
 from gymnasium import spaces
@@ -62,9 +63,11 @@ class FrictionAndCrashDetector(Box2D.b2.contactListener):
         u1 = contact.fixtureA.body.userData
         u2 = contact.fixtureB.body.userData
         if u1 and "car_id" in u1.__dict__ and u2 and "car_id" in u2.__dict__:
-            for car in self.env.cars:
-                if car.id == u1.id or car.id == u2.id:
-                    car.reward -= 100.0
+            car_1 = self.env.cars.get(u1.id)
+            car_2 = self.env.cars.get(u2.id)
+            if car_1.active and car_2.active:
+                car_1.reward -= 100.0
+                car_2.reward -= 100.0
 
     def _tile_contact(self, contact, begin):
         tile = None
@@ -87,7 +90,7 @@ class FrictionAndCrashDetector(Box2D.b2.contactListener):
             # check if the car object reached a new tile to update rewards
             if "car_id" in obj.__dict__:
                 car_obj = obj
-                for env_car in self.env.cars:
+                for env_car in self.env.cars.get_active():
                     if env_car.id == car_obj.id:
                         if not tile.idx in env_car.tiles_visited:
                             env_car.tiles_visited.add(tile.idx)
@@ -126,8 +129,8 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
     }
 
     def __init__(self, config: dict = None, *args, **kwargs):
-        num_cars = config.get("num_cars", 8)
-        car_configs = config.get("car_configs", [CarConfig.default()] * num_cars)
+        self.num_cars = config.get("num_cars", 8)
+        car_configs = config.get("car_configs", [CarConfig.default()] * 8)
         self.lap_complete_percent = config.get("lap_complete_percent", 0.95)
         self.render_mode = config.get("render_mode", None)
         self.first_tile_visitor_reward_factor = config.get(
@@ -147,16 +150,16 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
         )
         self.world = Box2D.b2World((0, 0), contactListener=self.contactListener_keepref)
         self.screen: Optional[pygame.Surface] = None
-        self.surfaces: list[pygame.Surface] = []
         self.clock: Optional[pygame.time.Clock] = None
         self.fd_tile = Box2D.b2.fixtureDef(
             shape=Box2D.b2.polygonShape(vertices=[(0, 0), (1, 0), (1, -1), (0, -1)])
         )
-        self.cars = MultiAgentCars(num_cars, car_configs)
-        self.leaderboard = LeaderBoard(self.cars)
 
-        self.possible_agents: List[str] = [f"car_{i}" for i in range(num_cars)]
-        self.agents: List[str] = self.possible_agents.copy()
+        self.possible_agents: List[str] = [f"car_{i}" for i in range(8)]
+        self.agents: List[str] = self.possible_agents.copy()[: self.num_cars]
+
+        self.cars = MultiAgentCars(car_configs, self.possible_agents, self.agents)
+        self.leaderboard = LeaderBoard(self.cars)
         self.observation_spaces = {
             agent: spaces.Box(
                 low=0, high=255, shape=(STATE_H, STATE_W, 3), dtype=np.uint8
@@ -181,6 +184,15 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
         self.road = []
         self.cars.destroy()
 
+    def set_num_cars(self, num_cars: int):
+        self.num_cars = num_cars
+        self.agents = self.possible_agents.copy()[: self.num_cars]
+        for car in self.cars.get_all():
+            if car.id not in self.agents:
+                car.active = False
+            else:
+                car.active = True
+
     def reset(
         self,
         *,
@@ -196,7 +208,7 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
         self.t = 0.0
         self.road_poly = []
 
-        self.agents = self.possible_agents.copy()
+        self.agents = self.possible_agents.copy()[: self.num_cars]
 
         while True:
             success = self._create_track()
@@ -209,10 +221,13 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
 
         if self.render_mode == "human":
             self.render()
-        obs, rew, terminated, truncated, info = self.step(None)
-        return obs, info
+        info = {}
+        for agent in self.agents:
+            info[agent] = {}
+        observations = self._render("state_pixels")
+        return observations, info
 
-    def step(self, actions: Union[dict, None]):
+    def step(self, actions: MultiAgentDict):
         self.cars.apply_actions(actions)
         self.leaderboard.update()
         self.world.Step(1.0 / FPS, 6 * 30, 2 * 30)
@@ -221,14 +236,11 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
         obs_d, rew_d, terminated_d, truncated_d, info_d = self.cars.step(
             self.track, actions, observations
         )
-        for car in self.cars:
-            if (
-                not car.id in terminated_d
-                or not car.id in truncated_d
-                or terminated_d[car.id]
-                or truncated_d[car.id]
-            ):
-                self.agents.remove(car.id)
+        for agent in self.agents:
+            car = self.cars.get(agent)
+            if car.active:
+                if terminated_d[agent] or truncated_d[agent]:
+                    self.agents.remove(agent)
         if self.render_mode == "human":
             self.render()
         return obs_d, rew_d, terminated_d, truncated_d, info_d
@@ -243,7 +255,7 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
         else:
             return self._render(self.render_mode)
 
-    def _render(self, mode: str):
+    def _render(self, mode: str) -> MultiAgentDict:
         pygame.font.init()
         if self.clock is None:
             self.clock = pygame.time.Clock()
@@ -251,16 +263,16 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
         if "t" not in self.__dict__:
             return  # reset() not called yet
 
-        self.surfaces = [
-            pygame.Surface((STATE_W, STATE_H)) for _ in range(len(self.cars))
-        ]
-        surf_width, surf_height = self.surfaces[0].get_size()
+        surfaces = {agent: pygame.Surface((STATE_W, STATE_H)) for agent in self.agents}
+        surf_width, surf_height = surfaces[self.agents[0]].get_size()
         surface_zoom = ZOOM * SCALE * surf_height / WINDOW_H
-        assert len(self.cars) > 0
-        for i, surface in enumerate(self.surfaces):
+        assert len(self.cars.get_active()) > 0
+        for agent, surface in surfaces.items():
             # computing transformations
-            angle = -self.cars[i].angle
-            trans = self.cars[i].get_translation(surface_zoom, surf_width, surf_height)
+            angle = -self.cars.get(agent).angle
+            trans = self.cars.get(agent).get_translation(
+                surface_zoom, surf_width, surf_height
+            )
 
             self._render_road(surface, surface_zoom, trans, angle)
 
@@ -268,26 +280,23 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
             self.cars.draw(
                 surface, surface_zoom, trans, angle, draw_tyre_marks, draw_number=False
             )
-        self.surfaces = [
-            pygame.transform.flip(surface, False, True) for surface in self.surfaces
-        ]
+        for agent in self.agents:
+            surfaces[agent] = pygame.transform.flip(surfaces[agent], False, True)
 
         # showing stats
-        self.cars.render_indicators(
-            self.render_mode, self.surfaces, surf_width, surf_height
-        )
+        self.cars.render_indicators(self.render_mode, surfaces, surf_width, surf_height)
 
-        for i, car in enumerate(self.cars):
+        for agent, surface in surfaces.items():
             font = pygame.font.Font(pygame.font.get_default_font(), surf_height // 20)
             reward_text = font.render(
-                "%04i" % car.reward, True, (255, 255, 255), (0, 0, 0)
+                "%04i" % self.cars.get(agent).reward, True, (255, 255, 255), (0, 0, 0)
             )
             reward_text_rect = reward_text.get_rect()
             reward_text_rect.center = (
                 surf_height // 15,
                 surf_height - surf_height * 2.5 / 40.0,
             )
-            self.surfaces[i].blit(reward_text, reward_text_rect)
+            surface.blit(reward_text, reward_text_rect)
 
         if mode == "human" or mode == "video":
             if mode == "human" and self.screen is None:
@@ -341,10 +350,12 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
                 self.render_mode, main_surface, WINDOW_W / 4, WINDOW_H
             )
 
-            for i, car in enumerate(self.cars):
+            for agent, surf in surfaces.items():
+                car = self.cars.get(agent)
+                i = car.count
                 font = pygame.font.Font(pygame.font.get_default_font(), 16)
                 car_id_reward_text = font.render(
-                    f"Car {i}: {car.reward:04.0f}", True, (255, 255, 255), None
+                    f"Car {car.count}: {car.reward:04.0f}", True, (255, 255, 255), None
                 )
                 car_id_reward_text_rect = car_id_reward_text.get_rect()
                 car_id_reward_text_rect.center = (
@@ -355,7 +366,7 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
 
                 font = pygame.font.Font(pygame.font.get_default_font(), 16)
                 pos_text = font.render(
-                    f"Pos: {self.leaderboard.get_position(car) + 1}/{len(self.cars)}",
+                    f"Pos: {self.leaderboard.get_position(car) + 1}/{len(self.cars.get_active())}",
                     True,
                     (255, 255, 255),
                     None,
@@ -378,13 +389,8 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
                 x_start = WINDOW_W * 3 / 4 + i % 2 * WINDOW_H / 4
                 y_start = i // 2 * WINDOW_H / 4
                 main_surface.blit(
-                    pygame.transform.smoothscale(
-                        self.surfaces[i], (WINDOW_H / 4, WINDOW_H / 4)
-                    ),
-                    (
-                        x_start,
-                        y_start,
-                    ),
+                    pygame.transform.smoothscale(surf, (WINDOW_H / 4, WINDOW_H / 4)),
+                    (x_start, y_start),
                 )
                 car_id_text = font.render(f"Car {i}", True, (255, 255, 255), None)
                 car_id_text_rect = car_id_text.get_rect()
@@ -412,17 +418,17 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
                     np.array(pygame.surfarray.pixels3d(main_surface)), axes=(1, 0, 2)
                 )
         elif mode == "state_pixels":
-            return self._create_image_arrays(self.surfaces)
+            return self._create_image_arrays(surfaces)
         else:
             return self.isopen
 
-    def _create_image_arrays(self, surfaces: list[pygame.Surface]) -> list[np.ndarray]:
-        image_arrays = []
-        for surf in surfaces:
+    def _create_image_arrays(self, surfaces: MultiAgentDict) -> MultiAgentDict:
+        image_arrays = {}
+        for agent, surf in surfaces.items():
             image_array = np.transpose(
                 np.array(pygame.surfarray.pixels3d(surf)), axes=(1, 0, 2)
             )
-            image_arrays.append(image_array)
+            image_arrays[agent] = image_array
         return image_arrays
 
     def close(self):
@@ -690,7 +696,7 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
             poly = [(p[0] - min_x + 25, p[1] - min_y + 25) for p in poly]
             gfxdraw.filled_polygon(track_map_surf, poly, (255, 255, 255, 255))
 
-        for car in self.cars:
+        for car in self.cars.get_active():
             pos = (
                 int(car.position[0] - min_x + 25),
                 int(car.position[1] - min_y + 25),
