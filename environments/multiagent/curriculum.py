@@ -2,6 +2,7 @@ import gymnasium
 from ray.rllib.callbacks.callbacks import RLlibCallback
 from ray.rllib.algorithms.algorithm import Algorithm
 from ray.rllib.env.env_runner import EnvRunner
+from ray.rllib.utils.metrics.metrics_logger import MetricsLogger
 from ray.rllib.utils.metrics import EPISODE_RETURN_MEAN, ENV_RUNNER_RESULTS
 from .cars import CarConfig
 
@@ -71,7 +72,7 @@ class Curriculum(RLlibCallback):
         self,
         *,
         algorithm: Algorithm,
-        metrics_logger=None,
+        metrics_logger: MetricsLogger,
         evaluation_metrics: dict,
         **kwargs,
     ) -> None:
@@ -84,12 +85,13 @@ class Curriculum(RLlibCallback):
             )
             return
         mean_return = evaluation_metrics[ENV_RUNNER_RESULTS][EPISODE_RETURN_MEAN]
-        gymnasium.logger.warn(f"Curriculum callback: eval reward mean = {mean_return}")
+        print(f"Curriculum callback: eval reward mean = {mean_return}")
         current = algorithm._counters.get("num_cars", config.num_cars_start)
         for entry in config.entries:
             if mean_return >= entry.min_reward and current < entry.num_cars:
                 update(algorithm, entry.num_cars)
                 algorithm._counters["num_cars"] = entry.num_cars
+                metrics_logger.log_value("curriculum/num_cars", entry.num_cars)
 
 
 class CurriculumStep:
