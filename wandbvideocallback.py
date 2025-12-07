@@ -41,7 +41,10 @@ class _WandbVideoCallback(RLlibCallback):
             return
         filename = max(files, key=lambda p: os.path.getmtime(p))
 
-        self.run.log({"evaluation_video": wandb.Video(filename, format="mp4")})
+        self.run.log(
+            {"evaluation_video": wandb.Video(filename, format="mp4")},
+            step=algorithm.iteration,
+        )
 
 
 class SingleAgentWandbVideoCallback(_WandbVideoCallback):
@@ -56,5 +59,5 @@ class MultiAgentWandbVideoCallback(_WandbVideoCallback):
     def __init__(self):
         super().__init__(
             video_dir="/tmp/multi-agent-videos",
-            project_name="car-racing-multi-agent",
+            project_name="curriculum-car-racing-multi-agent",
         )
