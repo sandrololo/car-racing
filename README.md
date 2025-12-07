@@ -1,4 +1,6 @@
 # car-racing
+<img width="1200" height="631" alt="Multi-agent CarRacing environment" src="https://github.com/user-attachments/assets/6306134e-f56c-47b2-aaf6-9e1dff2bf240" />
+This repository contains a multi-agent version of the original [CarRacing environment](https://gymnasium.farama.org/environments/box2d/car_racing/).
 
 ## Installation
 ### Swig
