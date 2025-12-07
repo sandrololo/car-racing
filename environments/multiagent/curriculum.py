@@ -65,6 +65,11 @@ class Curriculum(RLlibCallback):
         evaluation_metrics: dict,
         **kwargs,
     ) -> None:
+        if ENV_RUNNER_RESULTS not in evaluation_metrics:
+            gymnasium.logger.warn(
+                "Curriculum callback: No env runner results found in evaluation metrics!"
+            )
+            return
         mean_return = evaluation_metrics[ENV_RUNNER_RESULTS][EPISODE_RETURN_MEAN]
         gymnasium.logger.warn(f"Curriculum callback: eval reward mean = {mean_return}")
         current = algorithm._counters.get("num_cars", 1)
