@@ -441,19 +441,21 @@ class NormalizeReward(MultiAgentEnvWrapper, gym.utils.RecordConstructorArgs):
     ) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
         """Steps through the environment, normalizing the reward returned."""
         obs, reward_dict, terminated, truncated, info = super().step(action)
-        keys = reward_dict.keys()
 
         # Using the `discounted_reward` rather than `reward` makes no sense but for backward compatibility, it is being kept
-        for key in keys:
-            self.discounted_reward = self.discounted_reward * self.gamma * (
-                1 - terminated[key]
-            ) + float(reward_dict[key])
-            if self._update_running_mean:
-                self.return_rms.update(self.discounted_reward)
+        for agent_id, reward in reward_dict.items():
+            # Ignore zero rewards to avoid the running mean being affected by them
+            # because they are created by inactive agents mostly
+            if reward != 0:
+                self.discounted_reward = self.discounted_reward * self.gamma * (
+                    1 - terminated[agent_id]
+                ) + float(reward_dict[agent_id])
+                if self._update_running_mean:
+                    self.return_rms.update(self.discounted_reward)
 
         # We don't (reward - self.return_rms.mean) see https://github.com/openai/baselines/issues/538
         normalized_rewards = {
-            key: reward_dict[key] / np.sqrt(self.return_rms.var + self.epsilon)
-            for key in keys
+            agent_id: reward / np.sqrt(self.return_rms.var + self.epsilon)
+            for agent_id, reward in reward_dict.items()
         }
         return obs, normalized_rewards, terminated, truncated, info
