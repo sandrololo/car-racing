@@ -63,7 +63,7 @@ ppo_config = (
             "lap_complete_percent": 0.95,
             "first_tile_visitor_reward_factor": training_config.FIRST_TILE_VISITOR_REWARD_FACTOR,
             "num_cars": training_config.NUM_CARS,
-            "cars_configs": training_config.CAR_CONFIGS,
+            "car_configs": training_config.CAR_CONFIGS,
             "max_timesteps_start": training_config.TRAIN_MAX_TIMESTEPS_START,
             "max_timesteps_increase": training_config.TRAIN_MAX_TIMESTEPS_PER_EPISODE_INCREASE,
             "normalize_rewards": training_config.NORMALIZE_REWARDS,
@@ -86,7 +86,12 @@ ppo_config = (
                         high=1.0,
                         shape=(96, 96, training_config.OBS_FRAME_STACK),
                         dtype=np.float32,
-                    )
+                    ),
+                    action_space=Box(
+                        low=np.array([-1.0, 0.0, 0.0], dtype=np.float32),
+                        high=np.array([1.0, 1.0, 1.0], dtype=np.float32),
+                        dtype=np.float32,
+                    ),
                 )
             }
         ),
@@ -130,7 +135,7 @@ ppo_config = (
                 "lap_complete_percent": 0.95,
                 "first_tile_visitor_reward_factor": training_config.FIRST_TILE_VISITOR_REWARD_FACTOR,
                 "num_cars": training_config.NUM_CARS,
-                "cars_configs": training_config.CAR_CONFIGS,
+                "car_configs": training_config.CAR_CONFIGS,
                 "max_timesteps_start": training_config.EVAL_MAX_TIMESTEPS,
                 "normalize_rewards": False,
                 "record_video": True,
