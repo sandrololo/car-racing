@@ -1,4 +1,5 @@
 from environments.multiagent.cars import CarConfig, EnginePower, TyreType
+from environments.multiagent.curriculum import CurriculumConfig, CurriculumStep
 
 FIRST_TILE_VISITOR_REWARD_FACTOR = 2
 OBS_FRAME_STACK = 4
@@ -9,7 +10,7 @@ TRAIN_MAX_TIMESTEPS_START = 500
 TRAIN_MAX_TIMESTEPS_PER_EPISODE_INCREASE = 0.1
 TRAIN_GAMMA = 0.98
 TRAIN_NUM_ITERATIONS = 3000
-MINI_BATCH_SIZE = 128
+MINI_BATCH_SIZE = 64
 TRAIN_CLIP_PARAM = 0.1
 TRAIN_NUM_EPOCHS = 5
 LR_SCHEDULE_START = 0.0001
@@ -28,3 +29,12 @@ CAR_CONFIGS = [
     CarConfig(EnginePower.MEDIUM, TyreType.MEDIUM),
     CarConfig(EnginePower.MEDIUM, TyreType.MEDIUM),
 ]
+CURRICULUM_CONFIG = CurriculumConfig(
+    CAR_CONFIGS,
+    num_cars_start=1,
+    entries=[
+        CurriculumStep(num_cars=2, min_reward=50),
+        CurriculumStep(num_cars=3, min_reward=100),
+        CurriculumStep(num_cars=4, min_reward=150),
+    ],
+)
