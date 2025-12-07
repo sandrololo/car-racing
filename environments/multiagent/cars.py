@@ -497,10 +497,10 @@ class MultiAgentCars:
                 terminated_d[agent] = car.terminated
                 truncated_d[agent] = car.truncated
             else:
-                obs_d[agent] = np.zeros_like(observations[list(self._cars.keys())[0]])
+                obs_d[agent] = None
                 rew_d[agent] = 0.0
-                terminated_d[agent] = False
-                truncated_d[agent] = False
+                terminated_d[agent] = True
+                truncated_d[agent] = True
                 info_d[agent] = {}
         terminated_d["__all__"] = all(terminated_d.values())
         truncated_d["__all__"] = all(truncated_d.values())

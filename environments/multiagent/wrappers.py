@@ -222,7 +222,10 @@ def _preprocess_obs(obs: MultiAgentDict) -> MultiAgentDict:
     """Convert uint8 observations to normalized float32."""
     normalized_obs = {}
     for key, value in obs.items():
-        normalized_obs[key] = value.astype(np.float32) / 255.0
+        if value is None:
+            normalized_obs[key] = None
+        else:
+            normalized_obs[key] = value.astype(np.float32) / 255.0
     return normalized_obs
 
 
@@ -252,10 +255,13 @@ class NormalizeObservation(TransformObservation, gym.utils.RecordConstructorArgs
 def _create_grayscale_observation(obs: MultiAgentDict) -> MultiAgentDict:
     gray_obs = {}
     for key, value in obs.items():
-        gray_obs[key] = np.sum(
-            np.multiply(value, np.array([0.2125, 0.7154, 0.0721])), axis=-1
-        ).astype(np.uint8)
-        gray_obs[key] = np.expand_dims(gray_obs[key], axis=-1)
+        if value is None:
+            gray_obs[key] = None
+        else:
+            gray_obs[key] = np.sum(
+                np.multiply(value, np.array([0.2125, 0.7154, 0.0721])), axis=-1
+            ).astype(np.uint8)
+            gray_obs[key] = np.expand_dims(gray_obs[key], axis=-1)
     return gray_obs
 
 
@@ -348,10 +354,17 @@ class FrameStackObservation(MultiAgentEnvWrapper, gym.utils.RecordConstructorArg
         """
         obs, reward, terminated, truncated, info = self.env.step(action)
         for key, value in obs.items():
-            self.obs_queue[key].append(value.squeeze())
+            if value is None:
+                self.obs_queue[key].append(None)
+            else:
+                self.obs_queue[key].append(value.squeeze())
 
         updated_obs = {
-            key: deepcopy(np.stack(value, axis=-1))
+            key: (
+                deepcopy(np.stack(value, axis=-1))
+                if not any(v is None for v in value)
+                else None
+            )
             for key, value in self.obs_queue.items()
         }
         return updated_obs, reward, terminated, truncated, info
@@ -368,7 +381,11 @@ class FrameStackObservation(MultiAgentEnvWrapper, gym.utils.RecordConstructorArg
             self.obs_queue[key].append(value.squeeze())
 
         updated_obs = {
-            key: deepcopy(np.stack(value, axis=-1))
+            key: (
+                deepcopy(np.stack(value, axis=-1))
+                if not any(v is None for v in value)
+                else None
+            )
             for key, value in self.obs_queue.items()
         }
         return updated_obs, info
