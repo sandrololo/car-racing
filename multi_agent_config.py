@@ -1,7 +1,7 @@
 from environments.multiagent.cars import CarConfig, EnginePower, TyreType
 from environments.multiagent.curriculum import CurriculumConfig, CurriculumStep
 
-FIRST_TILE_VISITOR_REWARD_FACTOR = 2
+FIRST_TILE_VISITOR_REWARD_FACTOR = 1
 OBS_FRAME_STACK = 4
 NORMALIZE_REWARDS = True
 NUM_ENV_RUNNERS = 6
