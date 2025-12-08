@@ -160,7 +160,7 @@ class IncreasingTimeLimit(MultiAgentEnvWrapper, gym.utils.RecordConstructorArgs)
         ), f"Expect the `max_episode_steps_start` to be positive, actually: {max_episode_steps_start}"
         assert (
             isinstance(max_episode_steps_increase, (int, float))
-            and max_episode_steps_increase > 0
+            and max_episode_steps_increase >= 0
         ), f"Expect the `max_episode_steps_increase` to be positive, actually: {max_episode_steps_increase}"
         gym.utils.RecordConstructorArgs.__init__(
             self,
