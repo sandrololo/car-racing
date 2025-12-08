@@ -25,6 +25,7 @@ def _get_wrapped_base_envs(env) -> list[MultiAgentCarRacingEnv]:
 
 
 def _set_num_cars(env_runner: EnvRunner, num_cars: int):
+    env_runner.config.environment(env_config={"num_cars": num_cars})
     if env_runner.env is not None:
         base_envs = _get_wrapped_base_envs(env_runner.env)
         if len(base_envs):
