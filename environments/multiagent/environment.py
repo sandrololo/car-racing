@@ -237,7 +237,8 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
         self.leaderboard.update()
         self.world.Step(1.0 / FPS, 6 * 30, 2 * 30)
 
-        observations = self._render("state_pixels")
+        observation_surfaces = self._render_observation_surfaces()
+        observations = self._create_image_arrays(observation_surfaces)
         obs_d, rew_d, terminated_d, truncated_d, info_d = self.cars.step(
             self.track, actions, observations
         )
@@ -247,7 +248,7 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
                 if terminated_d[agent] or truncated_d[agent]:
                     self.agents.remove(agent)
         if self.render_mode == "human":
-            self.render()
+            self._render("human", observation_surfaces)
         return obs_d, rew_d, terminated_d, truncated_d, info_d
 
     def render(self):
@@ -260,46 +261,11 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
         else:
             return self._render(self.render_mode)
 
-    def _render(self, mode: str) -> MultiAgentDict:
-        if self.clock is None:
-            self.clock = pygame.time.Clock()
-
-        if "t" not in self.__dict__:
-            return  # reset() not called yet
-
-        surfaces = {agent: pygame.Surface((STATE_W, STATE_H)) for agent in self.agents}
-        surf_width, surf_height = surfaces[self.agents[0]].get_size()
-        surface_zoom = ZOOM * SCALE * surf_height / WINDOW_H
-        assert len(self.cars.get_active()) > 0
-        for agent, surface in surfaces.items():
-            # computing transformations
-            angle = -self.cars.get(agent).angle
-            trans = self.cars.get(agent).get_translation(
-                surface_zoom, surf_width, surf_height
-            )
-
-            self._render_road(surface, surface_zoom, trans, angle)
-
-            draw_tyre_marks = mode not in ["state_pixels_list", "state_pixels"]
-            self.cars.draw(
-                surface, surface_zoom, trans, angle, draw_tyre_marks, draw_number=False
-            )
-        for agent in self.agents:
-            surfaces[agent] = pygame.transform.flip(surfaces[agent], False, True)
-
-        # showing stats
-        self.cars.render_indicators(self.render_mode, surfaces, surf_width, surf_height)
-
-        for agent, surface in surfaces.items():
-            reward_text = self._obs_reward_font.render(
-                "%04i" % self.cars.get(agent).reward, True, (255, 255, 255), (0, 0, 0)
-            )
-            reward_text_rect = reward_text.get_rect()
-            reward_text_rect.center = (
-                surf_height // 15,
-                surf_height - surf_height * 2.5 / 40.0,
-            )
-            surface.blit(reward_text, reward_text_rect)
+    def _render(
+        self, mode: str, surfaces: Optional[MultiAgentDict] = None
+    ) -> MultiAgentDict:
+        if surfaces is None:
+            surfaces = self._render_observation_surfaces()
 
         if mode == "human" or mode == "video":
             if mode == "human" and self.screen is None:
@@ -424,6 +390,47 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
             return self._create_image_arrays(surfaces)
         else:
             return self.isopen
+
+    def _render_observation_surfaces(self) -> MultiAgentDict:
+        if self.clock is None:
+            self.clock = pygame.time.Clock()
+
+        if "t" not in self.__dict__:
+            return  # reset() not called yet
+
+        surfaces = {agent: pygame.Surface((STATE_W, STATE_H)) for agent in self.agents}
+        surf_width, surf_height = surfaces[self.agents[0]].get_size()
+        surface_zoom = ZOOM * SCALE * surf_height / WINDOW_H
+        assert len(self.cars.get_active()) > 0
+        for agent, surface in surfaces.items():
+            # computing transformations
+            angle = -self.cars.get(agent).angle
+            trans = self.cars.get(agent).get_translation(
+                surface_zoom, surf_width, surf_height
+            )
+
+            self._render_road(surface, surface_zoom, trans, angle)
+
+            self.cars.draw(
+                surface, surface_zoom, trans, angle, tyre_marks=False, draw_number=False
+            )
+        for agent in self.agents:
+            surfaces[agent] = pygame.transform.flip(surfaces[agent], False, True)
+
+        # showing stats
+        self.cars.render_indicators(self.render_mode, surfaces, surf_width, surf_height)
+
+        for agent, surface in surfaces.items():
+            reward_text = self._obs_reward_font.render(
+                "%04i" % self.cars.get(agent).reward, True, (255, 255, 255), (0, 0, 0)
+            )
+            reward_text_rect = reward_text.get_rect()
+            reward_text_rect.center = (
+                surf_height // 15,
+                surf_height - surf_height * 2.5 / 40.0,
+            )
+            surface.blit(reward_text, reward_text_rect)
+        return surfaces
 
     def _create_image_arrays(self, surfaces: MultiAgentDict) -> MultiAgentDict:
         image_arrays = {}
