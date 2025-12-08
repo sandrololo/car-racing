@@ -361,9 +361,7 @@ class FrameStackObservation(MultiAgentEnvWrapper, gym.utils.RecordConstructorArg
 
         updated_obs = {
             key: (
-                deepcopy(np.stack(value, axis=-1))
-                if not any(v is None for v in value)
-                else None
+                np.stack(value, axis=-1) if not any(v is None for v in value) else None
             )
             for key, value in self.obs_queue.items()
         }
@@ -382,9 +380,7 @@ class FrameStackObservation(MultiAgentEnvWrapper, gym.utils.RecordConstructorArg
 
         updated_obs = {
             key: (
-                deepcopy(np.stack(value, axis=-1))
-                if not any(v is None for v in value)
-                else None
+                np.stack(value, axis=-1) if not any(v is None for v in value) else None
             )
             for key, value in self.obs_queue.items()
         }
