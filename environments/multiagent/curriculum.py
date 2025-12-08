@@ -5,10 +5,11 @@ from ray.rllib.algorithms.algorithm import Algorithm
 from ray.rllib.env.env_runner import EnvRunner
 from ray.rllib.utils.metrics.metrics_logger import MetricsLogger
 from ray.rllib.utils.metrics import EPISODE_RETURN_MEAN, ENV_RUNNER_RESULTS
+from .environment import MultiAgentCarRacingEnv
 from .cars import CarConfig
 
 
-def _get_wrapped_base_envs(env):
+def _get_wrapped_base_envs(env) -> list[MultiAgentCarRacingEnv]:
     envs = []
     current = env
     if env is not None:
