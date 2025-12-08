@@ -40,7 +40,6 @@ def _set_num_cars(env_runner: EnvRunner, num_cars: int):
 
 def update(algorithm: Algorithm, num_cars: int):
     algorithm.config.environment(env_config={"num_cars": num_cars})
-    algorithm.config.evaluation(env_config={"num_cars": num_cars})
     algorithm.env_runner_group.foreach_env_runner(
         lambda env_runner: _set_num_cars(env_runner, num_cars)
     )
