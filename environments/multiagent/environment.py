@@ -174,6 +174,11 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
             for agent in self.possible_agents
         }
         self.human_render_mode_camera_angle: Optional[float] = None
+        pygame.font.init()
+        self._obs_reward_font = pygame.font.Font(
+            pygame.font.get_default_font(), STATE_H // 20
+        )
+        self._font_16 = pygame.font.Font(pygame.font.get_default_font(), 16)
         super().__init__()
 
     def _destroy(self):
@@ -256,7 +261,6 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
             return self._render(self.render_mode)
 
     def _render(self, mode: str) -> MultiAgentDict:
-        pygame.font.init()
         if self.clock is None:
             self.clock = pygame.time.Clock()
 
@@ -287,8 +291,7 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
         self.cars.render_indicators(self.render_mode, surfaces, surf_width, surf_height)
 
         for agent, surface in surfaces.items():
-            font = pygame.font.Font(pygame.font.get_default_font(), surf_height // 20)
-            reward_text = font.render(
+            reward_text = self._obs_reward_font.render(
                 "%04i" % self.cars.get(agent).reward, True, (255, 255, 255), (0, 0, 0)
             )
             reward_text_rect = reward_text.get_rect()
@@ -353,8 +356,7 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
             for agent, surf in surfaces.items():
                 car = self.cars.get(agent)
                 i = car.count
-                font = pygame.font.Font(pygame.font.get_default_font(), 16)
-                car_id_reward_text = font.render(
+                car_id_reward_text = self._font_16.render(
                     f"Car {car.count}: {car.reward:04.0f}", True, (255, 255, 255), None
                 )
                 car_id_reward_text_rect = car_id_reward_text.get_rect()
@@ -364,8 +366,7 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
                 )
                 main_surface.blit(car_id_reward_text, car_id_reward_text_rect)
 
-                font = pygame.font.Font(pygame.font.get_default_font(), 16)
-                pos_text = font.render(
+                pos_text = self._font_16.render(
                     f"Pos: {self.leaderboard.get_position(car) + 1}/{len(self.cars.get_active())}",
                     True,
                     (255, 255, 255),
@@ -378,7 +379,7 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
                 )
                 main_surface.blit(pos_text, pos_text_rect)
 
-                config_text_surf = car.config.render()
+                config_text_surf = car.config._config_surface
                 config_text_rect = config_text_surf.get_rect()
                 config_text_rect.center = (
                     15 + config_text_rect.width / 2,
@@ -392,7 +393,9 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
                     pygame.transform.smoothscale(surf, (WINDOW_H / 4, WINDOW_H / 4)),
                     (x_start, y_start),
                 )
-                car_id_text = font.render(f"Car {i}", True, (255, 255, 255), None)
+                car_id_text = self._font_16.render(
+                    f"Car {i}", True, (255, 255, 255), None
+                )
                 car_id_text_rect = car_id_text.get_rect()
                 car_id_text_rect.center = (
                     x_start + 30,

@@ -46,6 +46,7 @@ class CarConfig:
     ):
         self._engine_power: EnginePower = engine_power
         self._tyre_type: TyreType = tyre_type
+        self._config_surface = self._render()
 
     @property
     def engine_power(self) -> EnginePower:
@@ -55,7 +56,8 @@ class CarConfig:
     def tyre_type(self) -> TyreType:
         return self._tyre_type
 
-    def render(self) -> pygame.Surface:
+    def _render(self) -> pygame.Surface:
+        pygame.font.init()
         font = pygame.font.Font(pygame.font.get_default_font(), 9)
         power_color = (
             (255, 0, 0)
