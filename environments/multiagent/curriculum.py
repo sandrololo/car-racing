@@ -1,3 +1,4 @@
+from typing import Optional
 import gymnasium
 from ray.rllib.callbacks.callbacks import RLlibCallback
 from ray.rllib.algorithms.algorithm import Algorithm
@@ -55,6 +56,7 @@ class Curriculum(RLlibCallback):
         self,
         *,
         algorithm: "Algorithm",
+        metrics_logger: Optional[MetricsLogger] = None,
         **kwargs,
     ) -> None:
         assert hasattr(
@@ -67,12 +69,14 @@ class Curriculum(RLlibCallback):
             "curriculum_config"
         ]
         algorithm._counters["num_cars"] = config.num_cars_start
+        if metrics_logger is not None:
+            metrics_logger.log_value("curriculum/num_cars", config.num_cars_start)
 
     def on_evaluate_end(
         self,
         *,
         algorithm: Algorithm,
-        metrics_logger: MetricsLogger,
+        metrics_logger: Optional[MetricsLogger] = None,
         evaluation_metrics: dict,
         **kwargs,
     ) -> None:
@@ -91,7 +95,8 @@ class Curriculum(RLlibCallback):
             if mean_return >= entry.min_reward and current < entry.num_cars:
                 update(algorithm, entry.num_cars)
                 algorithm._counters["num_cars"] = entry.num_cars
-                metrics_logger.log_value("curriculum/num_cars", entry.num_cars)
+                if metrics_logger is not None:
+                    metrics_logger.log_value("curriculum/num_cars", entry.num_cars)
 
 
 class CurriculumStep:
