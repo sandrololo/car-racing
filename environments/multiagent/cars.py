@@ -56,15 +56,17 @@ class CarConfig:
     def tyre_type(self) -> TyreType:
         return self._tyre_type
 
-    @property
-    def surface(self) -> pygame.Surface:
+    def get_surface(self, mode: str) -> pygame.Surface:
         if self._config_surface is None:
-            self._config_surface = self._render()
+            self._config_surface = self._render(mode)
         return self._config_surface
 
-    def _render(self) -> pygame.Surface:
+    def _render(self, mode: str) -> pygame.Surface:
         pygame.font.init()
-        font = pygame.font.Font(pygame.font.get_default_font(), 9)
+        if mode == "video":
+            font = pygame.font.Font(pygame.font.get_default_font(), 7)
+        else:
+            font = pygame.font.Font(pygame.font.get_default_font(), 9)
         power_color = (
             (255, 0, 0)
             if self.engine_power == EnginePower.HIGH
@@ -349,10 +351,10 @@ class _Car:
         font_size = int(1.6 * zoom)
         font = pygame.font.Font(pygame.font.get_default_font(), font_size)
         number_surface = font.render(str(self.count), True, (255, 255, 255))
+        number_surface = pygame.transform.flip(number_surface, True, False)
         number_surface = pygame.transform.rotate(
-            number_surface, np.rad2deg(self.angle + view_angle)
+            number_surface, 180 - np.rad2deg(self.angle + view_angle)
         )
-        number_surface = pygame.transform.flip(number_surface, False, True)
 
         pos_offset = pygame.math.Vector2(0, -0.6).rotate_rad(self.angle)
         pos_number = pygame.math.Vector2(self.position) + pos_offset

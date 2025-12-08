@@ -29,6 +29,8 @@ from .config import (
     STATE_H,
     WINDOW_W,
     WINDOW_H,
+    VIDEO_W,
+    VIDEO_H,
     SCALE,
     TRACK_RAD,
     PLAYFIELD,
@@ -179,6 +181,7 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
             pygame.font.get_default_font(), STATE_H // 20
         )
         self._font_16 = pygame.font.Font(pygame.font.get_default_font(), 16)
+        self._font_12 = pygame.font.Font(pygame.font.get_default_font(), 12)
         super().__init__()
 
     def _destroy(self):
@@ -272,7 +275,11 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
                 pygame.init()
                 pygame.display.init()
                 self.screen = pygame.display.set_mode((WINDOW_W, WINDOW_H))
-            main_surface = pygame.Surface((WINDOW_W, WINDOW_H))
+            if mode == "human":
+                main_surface = pygame.Surface((WINDOW_W, WINDOW_H))
+            else:
+                main_surface = pygame.Surface((VIDEO_W, VIDEO_H))
+            meain_surf_width, main_surf_height = main_surface.get_size()
             # computing transformations
             leading_car_track_tile_idx = (
                 list(self.leaderboard[0].tiles_visited)[-1]
@@ -293,13 +300,15 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
                 current_angle - self.human_render_mode_camera_angle
             ) * 0.03
             min_x, min_y, width, height = self.cars.get_enclosing_rect()
-            zoom = min(ZOOM * SCALE, 420 / max(1, max((width), (height))))
+            zoom = min(
+                ZOOM * SCALE, main_surf_height / 1.3 / max(1, max((width), (height)))
+            )
             scroll_x = -(min_x + width / 2) * zoom
             scroll_y = -(min_y + height / 2) * zoom
             trans = pygame.math.Vector2((scroll_x, scroll_y)).rotate_rad(
                 self.human_render_mode_camera_angle
             )
-            trans = (WINDOW_W / 2 + trans[0], WINDOW_H / 2 + trans[1])
+            trans = (meain_surf_width / 2 + trans[0], main_surf_height / 2 + trans[1])
 
             self._render_road(
                 main_surface, zoom, trans, self.human_render_mode_camera_angle
@@ -316,80 +325,120 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
             # showing stats
             main_surface = pygame.transform.flip(main_surface, False, True)
             self.cars.render_indicators(
-                self.render_mode, main_surface, WINDOW_W / 4, WINDOW_H
+                self.render_mode, main_surface, meain_surf_width / 4, main_surf_height
             )
 
             for car in self.cars.get_active():
                 agent = car.id
                 i = car.count
-                car_id_reward_text = self._font_16.render(
-                    f"Car {car.count}: {car.reward:04.0f}", True, (255, 255, 255), None
-                )
+                if mode == "human":
+                    car_id_reward_text = self._font_16.render(
+                        f"Car {car.count}: {car.reward:04.0f}",
+                        True,
+                        (255, 255, 255),
+                        None,
+                    )
+                else:
+                    car_id_reward_text = self._font_12.render(
+                        f"Car {car.count}: {car.reward:04.0f}",
+                        True,
+                        (255, 255, 255),
+                        None,
+                    )
                 car_id_reward_text_rect = car_id_reward_text.get_rect()
                 car_id_reward_text_rect.center = (
-                    50,
-                    WINDOW_H - WINDOW_H * 4.2 / 40.0 - i * 5 * (WINDOW_H / 40.0),
+                    meain_surf_width / 22,
+                    main_surf_height
+                    - main_surf_height * 4.2 / 40.0
+                    - i * 5 * (main_surf_height / 40.0),
                 )
                 main_surface.blit(car_id_reward_text, car_id_reward_text_rect)
 
                 if car.terminated or car.truncated:
-                    pos_text = self._font_16.render(
-                        "TERMINATED" if car.terminated else "TRUNCATED",
-                        True,
-                        (255, 255, 255),
-                        None,
-                    )
+                    if mode == "human":
+                        pos_text = self._font_16.render(
+                            "TERMINATED" if car.terminated else "TRUNCATED",
+                            True,
+                            (255, 255, 255),
+                            None,
+                        )
+                    else:
+                        pos_text = self._font_12.render(
+                            "TERMINATED" if car.terminated else "TRUNCATED",
+                            True,
+                            (255, 255, 255),
+                            None,
+                        )
                     pos_text_rect = pos_text.get_rect()
                     pos_text_rect.center = (
-                        WINDOW_W / 4 - 60,
-                        WINDOW_H - WINDOW_H * 4.2 / 40.0 - i * 5 * (WINDOW_H / 40.0),
+                        meain_surf_width / 4 - main_surf_height / 13,
+                        main_surf_height
+                        - main_surf_height * 4.2 / 40.0
+                        - i * 5 * (main_surf_height / 40.0),
                     )
                 else:
-                    pos_text = self._font_16.render(
-                        f"Pos: {self.leaderboard.get_position(car) + 1}/{len(self.cars.get_active())}",
-                        True,
-                        (255, 255, 255),
-                        None,
-                    )
+                    if mode == "human":
+                        pos_text = self._font_16.render(
+                            f"Pos: {self.leaderboard.get_position(car) + 1}/{len(self.cars.get_active())}",
+                            True,
+                            (255, 255, 255),
+                            None,
+                        )
+                    else:
+                        pos_text = self._font_12.render(
+                            f"Pos: {self.leaderboard.get_position(car) + 1}/{len(self.cars.get_active())}",
+                            True,
+                            (255, 255, 255),
+                            None,
+                        )
                     pos_text_rect = pos_text.get_rect()
                     pos_text_rect.center = (
-                        WINDOW_W / 4 - 40,
-                        WINDOW_H - WINDOW_H * 4.2 / 40.0 - i * 5 * (WINDOW_H / 40.0),
+                        meain_surf_width / 4 - meain_surf_width / 30,
+                        main_surf_height
+                        - main_surf_height * 4.2 / 40.0
+                        - i * 5 * (main_surf_height / 40.0),
                     )
                 main_surface.blit(pos_text, pos_text_rect)
 
-                config_text_surf = car.config.surface
+                config_text_surf = car.config.get_surface(mode)
                 config_text_rect = config_text_surf.get_rect()
                 config_text_rect.center = (
-                    15 + config_text_rect.width / 2,
-                    WINDOW_H - WINDOW_H * 0.5 / 40.0 - i * 5 * (WINDOW_H / 40.0),
+                    meain_surf_width / 80 + config_text_rect.width / 2,
+                    main_surf_height
+                    - main_surf_height * 0.5 / 40.0
+                    - i * 5 * (main_surf_height / 40.0),
                 )
                 main_surface.blit(config_text_surf, config_text_rect)
 
-                x_start = WINDOW_W * 3 / 4 + i % 2 * WINDOW_H / 4
-                y_start = i // 2 * WINDOW_H / 4
+                x_start = meain_surf_width * 3 / 4 + i % 2 * main_surf_height / 4
+                y_start = i // 2 * main_surf_height / 4
                 if agent in surfaces:
                     surf = surfaces[agent]
                     main_surface.blit(
                         pygame.transform.smoothscale(
-                            surf, (WINDOW_H / 4, WINDOW_H / 4)
+                            surf, (main_surf_height / 4, main_surf_height / 4)
                         ),
                         (x_start, y_start),
                     )
-                    car_id_text = self._font_16.render(
-                        f"Car {i}", True, (255, 255, 255), None
-                    )
+                    if mode == "human":
+                        car_id_text = self._font_16.render(
+                            f"Car {i}", True, (255, 255, 255), None
+                        )
+                    else:
+                        car_id_text = self._font_12.render(
+                            f"Car {i}", True, (255, 255, 255), None
+                        )
                     car_id_text_rect = car_id_text.get_rect()
                     car_id_text_rect.center = (
-                        x_start + 30,
-                        y_start + 15,
+                        x_start + main_surf_height / 23,
+                        y_start + main_surf_height / 50,
                     )
                     main_surface.blit(car_id_text, car_id_text_rect)
 
-            track_map_surf = self._create_track_map_surface()
+            track_map_surf = self._create_track_map_surface(main_surf_height // 2.7)
             main_surface.blit(
                 track_map_surf,
-                (WINDOW_W / 4 + 20, WINDOW_H - 220),
+                (meain_surf_width / 4 + 20, main_surf_height - main_surf_height / 2.5),
             )
 
             self.clock.tick(self.metadata["render_fps"])
@@ -715,23 +764,23 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
         self.track = track
         return True
 
-    def _create_track_map_surface(self):
+    def _create_track_map_surface(self, size: int) -> pygame.Surface:
         road_poly = self.get_wrapper_attr("road_poly")
         min_x = min(p[0] for p, c in road_poly)[0]
         max_x = max(p[0] for p, c in road_poly)[0]
         min_y = min(p[1] for p, c in road_poly)[0]
         max_y = max(p[1] for p, c in road_poly)[0]
         track_map_surf = pygame.Surface(
-            (max_x - min_x + 50, max_y - min_y + 50), pygame.SRCALPHA
+            (max_x - min_x + 80, max_y - min_y + 80), pygame.SRCALPHA
         )
         for poly, _ in road_poly:
-            poly = [(p[0] - min_x + 25, p[1] - min_y + 25) for p in poly]
+            poly = [(p[0] - min_x + 40, p[1] - min_y + 40) for p in poly]
             gfxdraw.filled_polygon(track_map_surf, poly, (255, 255, 255, 255))
 
         for car in self.cars.get_active():
             pos = (
-                int(car.position[0] - min_x + 25),
-                int(car.position[1] - min_y + 25),
+                int(car.position[0] - min_x + 40),
+                int(car.position[1] - min_y + 40),
             )
             gfxdraw.filled_circle(
                 track_map_surf,
@@ -744,7 +793,7 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
         return pygame.transform.smoothscale(
             track_map_surf,
             (
-                200 * track_map_surf.get_height() / track_map_surf.get_width(),
-                200,
+                size * track_map_surf.get_height() / track_map_surf.get_width(),
+                size,
             ),
         )
