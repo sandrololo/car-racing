@@ -345,7 +345,7 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
                 )
                 main_surface.blit(pos_text, pos_text_rect)
 
-                config_text_surf = car.config._config_surface
+                config_text_surf = car.config.surface
                 config_text_rect = config_text_surf.get_rect()
                 config_text_rect.center = (
                     15 + config_text_rect.width / 2,

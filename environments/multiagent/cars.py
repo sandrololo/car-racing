@@ -46,7 +46,7 @@ class CarConfig:
     ):
         self._engine_power: EnginePower = engine_power
         self._tyre_type: TyreType = tyre_type
-        self._config_surface = self._render()
+        self._config_surface: Optional[pygame.Surface] = None
 
     @property
     def engine_power(self) -> EnginePower:
@@ -55,6 +55,12 @@ class CarConfig:
     @property
     def tyre_type(self) -> TyreType:
         return self._tyre_type
+
+    @property
+    def surface(self) -> pygame.Surface:
+        if self._config_surface is None:
+            self._config_surface = self._render()
+        return self._config_surface
 
     def _render(self) -> pygame.Surface:
         pygame.font.init()
