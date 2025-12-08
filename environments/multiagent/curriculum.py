@@ -24,8 +24,10 @@ def _get_wrapped_base_envs(env) -> list[MultiAgentCarRacingEnv]:
     return envs
 
 
-def _set_num_cars(env_runner: EnvRunner, num_cars: int):
+def _set_num_cars(env_runner: EnvRunner, num_cars: int, eval: bool = False):
     env_runner.config.environment(env_config={"num_cars": num_cars})
+    if eval:
+        env_runner.config.evaluation(evaluation_config={"num_cars": num_cars})
     if env_runner.env is not None:
         base_envs = _get_wrapped_base_envs(env_runner.env)
         if len(base_envs):
@@ -45,7 +47,7 @@ def update(algorithm: Algorithm, num_cars: int):
         lambda env_runner: _set_num_cars(env_runner, num_cars)
     )
     algorithm.eval_env_runner_group.foreach_env_runner(
-        lambda env_runner: _set_num_cars(env_runner, num_cars)
+        lambda env_runner: _set_num_cars(env_runner, num_cars, eval=True)
     )
 
 
