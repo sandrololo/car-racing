@@ -6,18 +6,18 @@
         {
             "label": "Train Single Agent PPO on HSLU-workstation",
             "type": "shell",
-            "command": "docker build -t rllib-car-racing-training . && docker run --gpus=1 --shm-size=9.98gb --env WANDB_API_KEY=\"$WANDB_API_KEY\" --detach --rm rllib-car-racing-training python train-single-ppo.py"
+            "command": "docker build -t rllib-car-racing-training . && docker run --gpus=1 --shm-size=9.98gb --env WANDB_API_KEY=\"$WANDB_API_KEY\" --detach rllib-car-racing-training python train-single-ppo.py"
         },
         {
             "label": "Train Multi Agent PPO on HSLU-workstation",
             "type": "shell",
-            "command": "docker build -t rllib-car-racing-training . && docker run --gpus=1 --shm-size=9.98gb --env WANDB_API_KEY=\"$WANDB_API_KEY\" --detach --rm rllib-car-racing-training python train-multi-ppo.py",
+            "command": "docker build -t rllib-car-racing-training . && docker run --gpus=1 --shm-size=9.98gb --env WANDB_API_KEY=\"$WANDB_API_KEY\" --detach rllib-car-racing-training python train-multi-ppo.py",
             "problemMatcher": []
         },
         {
             "label": "Train Multi Agent PPO with curriculum on HSLU-workstation",
             "type": "shell",
-            "command": "docker build -t rllib-car-racing-training . && docker run --gpus=1 --shm-size=9.98gb --env WANDB_API_KEY=\"$WANDB_API_KEY\" --detach --rm rllib-car-racing-training python train-multi-ppo-curriculum.py",
+            "command": "docker build -t rllib-car-racing-training . && docker run --gpus=1 --shm-size=9.98gb --env WANDB_API_KEY=\"$WANDB_API_KEY\" --detach rllib-car-racing-training python train-multi-ppo-curriculum.py",
             "problemMatcher": []
         }
     ]
