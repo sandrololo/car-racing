@@ -502,6 +502,8 @@ class MultiAgentCars:
                         step_rewards[agent] = -100
                     obs_d[agent] = observations[agent]
                     rew_d[agent] = step_rewards[agent]
+                else:
+                    obs_d[agent] = None
                 terminated_d[agent] = car.terminated
                 truncated_d[agent] = car.truncated
             else:
