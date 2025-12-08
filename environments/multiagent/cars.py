@@ -374,6 +374,8 @@ class _Car:
         polygon = [(W, h * 5), (W, 0), (0, 0), (0, h * 5)]
         pygame.draw.polygon(indicator_box_surf, (255, 255, 255, alpha), polygon, 1)
         surface.blit(indicator_box_surf, (0, H - 5 * h))
+        if self.terminated or self.truncated:
+            return
 
         def vertical_ind(place, val):
             return [
@@ -531,10 +533,10 @@ class MultiAgentCars:
     ):
         if tyre_marks:
             for car in self._cars.values():
-                if car.active:
+                if car.active and not car.terminated and not car.truncated:
                     car.draw_tyre_marks(surface, zoom, angle, trans)
         for car in self._cars.values():
-            if car.active:
+            if car.active and not car.terminated and not car.truncated:
                 car.draw(surface, zoom, trans, angle, False)
                 if draw_number:
                     car.draw_number(surface, zoom, trans, angle)
@@ -549,7 +551,7 @@ class MultiAgentCars:
         if isinstance(surface, dict):
             for agent, surf in surface.items():
                 car = self.get(agent)
-                if car.active:
+                if car.active and not car.terminated and not car.truncated:
                     car.render_indicators(render_mode, 0, surf, W, H)
         else:
             for idx, car in enumerate(self._cars.values()):
@@ -573,6 +575,8 @@ class LeaderBoard:
             self.cars.get_active(),
             key=lambda car: (
                 car.lap_count,
+                1 - car.terminated,
+                1 - car.truncated,
                 max(list(car.tiles_visited)) if len(car.tiles_visited) > 0 else -1,
             ),
             reverse=True,

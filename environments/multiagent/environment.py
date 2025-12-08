@@ -319,8 +319,8 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
                 self.render_mode, main_surface, WINDOW_W / 4, WINDOW_H
             )
 
-            for agent, surf in surfaces.items():
-                car = self.cars.get(agent)
+            for car in self.cars.get_active():
+                agent = car.id
                 i = car.count
                 car_id_reward_text = self._font_16.render(
                     f"Car {car.count}: {car.reward:04.0f}", True, (255, 255, 255), None
@@ -332,17 +332,30 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
                 )
                 main_surface.blit(car_id_reward_text, car_id_reward_text_rect)
 
-                pos_text = self._font_16.render(
-                    f"Pos: {self.leaderboard.get_position(car) + 1}/{len(self.cars.get_active())}",
-                    True,
-                    (255, 255, 255),
-                    None,
-                )
-                pos_text_rect = pos_text.get_rect()
-                pos_text_rect.center = (
-                    WINDOW_W / 4 - 40,
-                    WINDOW_H - WINDOW_H * 4.2 / 40.0 - i * 5 * (WINDOW_H / 40.0),
-                )
+                if car.terminated or car.truncated:
+                    pos_text = self._font_16.render(
+                        "TERMINATED" if car.terminated else "TRUNCATED",
+                        True,
+                        (255, 255, 255),
+                        None,
+                    )
+                    pos_text_rect = pos_text.get_rect()
+                    pos_text_rect.center = (
+                        WINDOW_W / 4 - 60,
+                        WINDOW_H - WINDOW_H * 4.2 / 40.0 - i * 5 * (WINDOW_H / 40.0),
+                    )
+                else:
+                    pos_text = self._font_16.render(
+                        f"Pos: {self.leaderboard.get_position(car) + 1}/{len(self.cars.get_active())}",
+                        True,
+                        (255, 255, 255),
+                        None,
+                    )
+                    pos_text_rect = pos_text.get_rect()
+                    pos_text_rect.center = (
+                        WINDOW_W / 4 - 40,
+                        WINDOW_H - WINDOW_H * 4.2 / 40.0 - i * 5 * (WINDOW_H / 40.0),
+                    )
                 main_surface.blit(pos_text, pos_text_rect)
 
                 config_text_surf = car.config.surface
@@ -355,19 +368,23 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
 
                 x_start = WINDOW_W * 3 / 4 + i % 2 * WINDOW_H / 4
                 y_start = i // 2 * WINDOW_H / 4
-                main_surface.blit(
-                    pygame.transform.smoothscale(surf, (WINDOW_H / 4, WINDOW_H / 4)),
-                    (x_start, y_start),
-                )
-                car_id_text = self._font_16.render(
-                    f"Car {i}", True, (255, 255, 255), None
-                )
-                car_id_text_rect = car_id_text.get_rect()
-                car_id_text_rect.center = (
-                    x_start + 30,
-                    y_start + 15,
-                )
-                main_surface.blit(car_id_text, car_id_text_rect)
+                if agent in surfaces:
+                    surf = surfaces[agent]
+                    main_surface.blit(
+                        pygame.transform.smoothscale(
+                            surf, (WINDOW_H / 4, WINDOW_H / 4)
+                        ),
+                        (x_start, y_start),
+                    )
+                    car_id_text = self._font_16.render(
+                        f"Car {i}", True, (255, 255, 255), None
+                    )
+                    car_id_text_rect = car_id_text.get_rect()
+                    car_id_text_rect.center = (
+                        x_start + 30,
+                        y_start + 15,
+                    )
+                    main_surface.blit(car_id_text, car_id_text_rect)
 
             track_map_surf = self._create_track_map_surface()
             main_surface.blit(
@@ -398,7 +415,12 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
         if "t" not in self.__dict__:
             return  # reset() not called yet
 
-        surfaces = {agent: pygame.Surface((STATE_W, STATE_H)) for agent in self.agents}
+        surfaces = {
+            agent: pygame.Surface((STATE_W, STATE_H))
+            for agent in self.agents
+            if self.cars.get(agent).terminated is False
+            and self.cars.get(agent).truncated is False
+        }
         surf_width, surf_height = surfaces[self.agents[0]].get_size()
         surface_zoom = ZOOM * SCALE * surf_height / WINDOW_H
         assert len(self.cars.get_active()) > 0
@@ -414,7 +436,7 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
             self.cars.draw(
                 surface, surface_zoom, trans, angle, tyre_marks=False, draw_number=False
             )
-        for agent in self.agents:
+        for agent in surfaces.keys():
             surfaces[agent] = pygame.transform.flip(surfaces[agent], False, True)
 
         # showing stats
