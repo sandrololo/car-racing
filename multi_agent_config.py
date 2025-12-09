@@ -9,13 +9,13 @@ ROLLOUT_FRAGMENT_LENGTH = 400
 TRAIN_MAX_TIMESTEPS_START = 500
 TRAIN_MAX_TIMESTEPS_PER_EPISODE_INCREASE = 0.1
 TRAIN_GAMMA = 0.98
-TRAIN_NUM_ITERATIONS = 3000
+TRAIN_NUM_ITERATIONS = 5000
 MINI_BATCH_SIZE = 128
 TRAIN_CLIP_PARAM = 0.1
 TRAIN_NUM_EPOCHS = 5
 LR_SCHEDULE_START = 0.0001
 LR_SCHEDULE_END = 0.0001
-EVAL_INTERVAL = 20
+EVAL_INTERVAL = 50
 EVAL_MAX_TIMESTEPS = 800
 EVAL_DURATION = 3
 NUM_CARS = 1
@@ -33,8 +33,8 @@ CURRICULUM_CONFIG = CurriculumConfig(
     CAR_CONFIGS,
     num_cars_start=1,
     entries=[
-        CurriculumStep(num_cars=2, min_reward=200),
-        CurriculumStep(num_cars=3, min_reward=250),
-        CurriculumStep(num_cars=4, min_reward=300),
+        CurriculumStep(num_cars=2, min_reward=500),
+        CurriculumStep(num_cars=3, min_reward=750),
+        CurriculumStep(num_cars=4, min_reward=1000),
     ],
 )
