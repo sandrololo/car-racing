@@ -371,8 +371,8 @@ class _Car:
         h = H / 40.0
         H -= idx * 5 * h
         indicator_box_surf = pygame.Surface((W, 5 * h), pygame.SRCALPHA)
-        alpha = 128 if render_mode == "human" else 255
-        indicator_box_surf.fill((100, 100, 100, alpha))
+        alpha = 80 if render_mode == "human" else 255
+        indicator_box_surf.fill((0, 0, 0, alpha))
         polygon = [(W, h * 5), (W, 0), (0, 0), (0, h * 5)]
         pygame.draw.polygon(indicator_box_surf, (255, 255, 255, alpha), polygon, 1)
         surface.blit(indicator_box_surf, (0, H - 5 * h))
