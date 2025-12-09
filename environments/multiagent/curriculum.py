@@ -1,8 +1,10 @@
 from typing import Optional
+from git import List
 import gymnasium
 from ray.rllib.callbacks.callbacks import RLlibCallback
 from ray.rllib.algorithms.algorithm import Algorithm
 from ray.rllib.env.env_runner import EnvRunner
+from ray.rllib.env.env_runner_group import EnvRunnerGroup
 from ray.rllib.utils.metrics.metrics_logger import MetricsLogger
 from ray.rllib.utils.metrics import EPISODE_RETURN_MEAN, ENV_RUNNER_RESULTS
 from .environment import MultiAgentCarRacingEnv
@@ -97,6 +99,25 @@ class Curriculum(RLlibCallback):
                 algorithm._counters["num_cars"] = entry.num_cars
                 if metrics_logger is not None:
                     metrics_logger.log_value("curriculum/num_cars", entry.num_cars)
+
+    def on_env_runners_recreated(
+        self,
+        *,
+        algorithm: Algorithm,
+        env_runner_group: EnvRunnerGroup,
+        env_runner_indices: List[int],
+        is_evaluation: bool,
+        **kwargs,
+    ) -> None:
+        current = algorithm._counters.get("num_cars", None)
+        if current is not None:
+            algorithm.config.environment(env_config={"num_cars": current})
+            algorithm.env_runner_group.foreach_env_runner(
+                lambda env_runner: _set_num_cars(env_runner, current)
+            )
+            algorithm.eval_env_runner_group.foreach_env_runner(
+                lambda env_runner: _set_num_cars(env_runner, current, eval=True)
+            )
 
 
 class CurriculumStep:
