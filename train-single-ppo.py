@@ -58,6 +58,7 @@ ppo_config = (
         ],
         num_epochs=single_agent_config.TRAIN_NUM_EPOCHS,
         clip_param=single_agent_config.TRAIN_CLIP_PARAM,
+        use_kl_loss=True,
         kl_coeff=0.1,
     )
     .evaluation(
