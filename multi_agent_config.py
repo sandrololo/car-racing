@@ -5,12 +5,13 @@ FIRST_TILE_VISITOR_REWARD_FACTOR = 1
 OBS_FRAME_STACK = 4
 NORMALIZE_REWARDS = True
 NUM_ENV_RUNNERS = 6
-ROLLOUT_FRAGMENT_LENGTH = 400
+HEAD_FCNET_HIDDENS = [64, 64]
+ROLLOUT_FRAGMENT_LENGTH = 800
 TRAIN_MAX_TIMESTEPS_START = 500
 TRAIN_MAX_TIMESTEPS_PER_EPISODE_INCREASE = 0.1
 TRAIN_GAMMA = 0.98
 TRAIN_NUM_ITERATIONS = 5000
-MINI_BATCH_SIZE = 128
+MINI_BATCH_SIZE = 256
 TRAIN_CLIP_PARAM = 0.1
 TRAIN_NUM_EPOCHS = 5
 LR_SCHEDULE_START = 0.0001
@@ -33,8 +34,8 @@ CURRICULUM_CONFIG = CurriculumConfig(
     CAR_CONFIGS,
     num_cars_start=1,
     entries=[
-        CurriculumStep(num_cars=2, min_reward=500),
-        CurriculumStep(num_cars=3, min_reward=750),
+        CurriculumStep(num_cars=2, min_reward=600),
+        CurriculumStep(num_cars=3, min_reward=800),
         CurriculumStep(num_cars=4, min_reward=1000),
     ],
 )

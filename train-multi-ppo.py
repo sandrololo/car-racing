@@ -4,6 +4,7 @@ from ray import tune
 from ray.rllib.algorithms.ppo import PPOConfig
 from ray.rllib.core.rl_module.multi_rl_module import MultiRLModuleSpec
 from ray.rllib.core.rl_module.rl_module import RLModuleSpec
+from ray.rllib.core.rl_module.default_model_config import DefaultModelConfig
 from ray.air.integrations.wandb import WandbLoggerCallback
 from gymnasium.spaces import Box
 
@@ -97,7 +98,10 @@ ppo_config = (
                         dtype=np.float32,
                     ),
                 )
-            }
+            },
+            model_config=DefaultModelConfig(
+                head_fcnet_hiddens=training_config.HEAD_FCNET_HIDDENS
+            ),
         ),
     )
     # don't use more than one num_envs_per_env_runner so that training happens more often
