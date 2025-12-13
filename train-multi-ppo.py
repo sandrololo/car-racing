@@ -17,7 +17,11 @@ from environments.multiagent.wrappers import (
     FrameStackObservation,
     NormalizeReward,
 )
-from wandbvideocallback import MultiAgentWandbVideoCallback
+from callbacks import (
+    MultiAgentWandbVideoCallback,
+    NetworkSummaryCallback,
+    MULTI_AGENT_VIDEO_DIR,
+)
 import multi_agent_config as training_config
 
 
@@ -36,7 +40,7 @@ class WrappedEnv(MultiAgentEnvWrapper):
         if record_video:
             self.env = RecordVideo(
                 self.env,
-                video_folder="/tmp/multi-agent-videos",
+                video_folder=MULTI_AGENT_VIDEO_DIR,
                 video_length=0,
                 episode_trigger=lambda episode_id: episode_id
                 % training_config.EVAL_DURATION
@@ -143,7 +147,7 @@ ppo_config = (
             },
         },
     )
-    .callbacks(MultiAgentWandbVideoCallback)
+    .callbacks([MultiAgentWandbVideoCallback, NetworkSummaryCallback])
 )
 
 ray.init()

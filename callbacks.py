@@ -6,14 +6,7 @@ import wandb
 
 SINGLE_AGENT_VIDEO_DIR = "/tmp/single-agent-videos"
 MULTI_AGENT_VIDEO_DIR = "/tmp/multi-agent-videos"
-if not os.path.exists(SINGLE_AGENT_VIDEO_DIR):
-    os.makedirs(SINGLE_AGENT_VIDEO_DIR)
-for f in os.listdir(SINGLE_AGENT_VIDEO_DIR):
-    os.remove(os.path.join(SINGLE_AGENT_VIDEO_DIR, f))
-if not os.path.exists(MULTI_AGENT_VIDEO_DIR):
-    os.makedirs(MULTI_AGENT_VIDEO_DIR)
-for f in os.listdir(MULTI_AGENT_VIDEO_DIR):
-    os.remove(os.path.join(MULTI_AGENT_VIDEO_DIR, f))
+CURRICULUM_MULTI_AGENT_VIDEO_DIR = "/tmp/multi-agent-videos-curriculum"
 
 
 class _WandbVideoCallback(RLlibCallback):
@@ -21,6 +14,10 @@ class _WandbVideoCallback(RLlibCallback):
         super().__init__()
         self.video_dir = video_dir
         self.project_name = project_name
+        if not os.path.exists(video_dir):
+            os.makedirs(video_dir)
+        for f in os.listdir(video_dir):
+            os.remove(os.path.join(video_dir, f))
 
     def on_evaluate_end(
         self, algorithm: Algorithm, metrics_logger, evaluation_metrics, **kwargs
@@ -50,7 +47,7 @@ class _WandbVideoCallback(RLlibCallback):
 class SingleAgentWandbVideoCallback(_WandbVideoCallback):
     def __init__(self):
         super().__init__(
-            video_dir="/tmp/single-agent-videos",
+            video_dir=SINGLE_AGENT_VIDEO_DIR,
             project_name="car-racing-single-agent",
         )
 
@@ -58,6 +55,25 @@ class SingleAgentWandbVideoCallback(_WandbVideoCallback):
 class MultiAgentWandbVideoCallback(_WandbVideoCallback):
     def __init__(self):
         super().__init__(
-            video_dir="/tmp/multi-agent-videos",
+            video_dir=MULTI_AGENT_VIDEO_DIR,
+            project_name="car-racing-multi-agent",
+        )
+
+
+class MultiAgentCurriculumWandbVideoCallback(_WandbVideoCallback):
+    def __init__(self):
+        super().__init__(
+            video_dir=CURRICULUM_MULTI_AGENT_VIDEO_DIR,
             project_name="curriculum-car-racing-multi-agent",
         )
+
+
+class NetworkSummaryCallback(RLlibCallback):
+    def on_algorithm_init(
+        self,
+        *,
+        algorithm: Algorithm,
+        metrics_logger=None,
+        **kwargs,
+    ) -> None:
+        algorithm.learner_group.foreach_learner(lambda l: print(l.module.__repr__()))

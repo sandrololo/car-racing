@@ -5,7 +5,7 @@ from ray.rllib.core.rl_module.default_model_config import DefaultModelConfig
 from ray.air.integrations.wandb import WandbLoggerCallback
 
 from environments.singleagent import SingleAgentCarRacingEnv
-from wandbvideocallback import SingleAgentWandbVideoCallback
+from callbacks import SingleAgentWandbVideoCallback, NetworkSummaryCallback
 import single_agent_config
 
 
@@ -80,7 +80,7 @@ ppo_config = (
             }
         },
     )
-    .callbacks(SingleAgentWandbVideoCallback)
+    .callbacks([SingleAgentWandbVideoCallback, NetworkSummaryCallback])
 )
 
 ray.init()
