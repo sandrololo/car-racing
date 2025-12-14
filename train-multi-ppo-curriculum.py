@@ -99,11 +99,11 @@ ppo_config = (
                         high=np.array([1.0, 1.0, 1.0], dtype=np.float32),
                         dtype=np.float32,
                     ),
+                    model_config=DefaultModelConfig(
+                        head_fcnet_hiddens=training_config.HEAD_FCNET_HIDDENS
+                    ),
                 )
-            },
-            model_config=DefaultModelConfig(
-                head_fcnet_hiddens=training_config.HEAD_FCNET_HIDDENS
-            ),
+            }
         ),
     )
     # don't use more than one num_envs_per_env_runner so that training happens more often
