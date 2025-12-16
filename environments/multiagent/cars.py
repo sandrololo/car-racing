@@ -366,15 +366,13 @@ class _Car:
         )
         surface.blit(number_surface, number_text_rect)
 
-    def render_indicators(self, render_mode, idx, surface, W, H):
+    def render_indicators(self, surface, W, H):
         s = W / 40.0
         h = H / 40.0
-        H -= idx * 5 * h
-        indicator_box_surf = pygame.Surface((W, 5 * h), pygame.SRCALPHA)
-        alpha = 80 if render_mode == "human" else 255
-        indicator_box_surf.fill((0, 0, 0, alpha))
+        indicator_box_surf = pygame.Surface((W, 5 * h))
+        indicator_box_surf.fill((0, 0, 0))
         polygon = [(W, h * 5), (W, 0), (0, 0), (0, h * 5)]
-        pygame.draw.polygon(indicator_box_surf, (255, 255, 255, alpha), polygon, 1)
+        pygame.draw.polygon(indicator_box_surf, (255, 255, 255), polygon, 1)
         surface.blit(indicator_box_surf, (0, H - 5 * h))
         if self.terminated or self.truncated:
             return
@@ -545,20 +543,14 @@ class MultiAgentCars:
 
     def render_indicators(
         self,
-        render_mode: str,
-        surface: Union[pygame.Surface, MultiAgentDict],
+        surface: MultiAgentDict,
         W: Union[int, float],
         H: Union[int, float],
     ):
-        if isinstance(surface, dict):
-            for agent, surf in surface.items():
-                car = self.get(agent)
-                if car.active and not car.terminated and not car.truncated:
-                    car.render_indicators(render_mode, 0, surf, W, H)
-        else:
-            for idx, car in enumerate(self._cars.values()):
-                if car.active:
-                    car.render_indicators(render_mode, idx, surface, W, H)
+        for agent, surf in surface.items():
+            car = self.get(agent)
+            if car.active and not car.terminated and not car.truncated:
+                car.render_indicators(surf, W, H)
 
     def get_all(self) -> list[_Car]:
         return list(self._cars.values())

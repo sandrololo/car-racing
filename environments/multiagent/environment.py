@@ -1,3 +1,4 @@
+import time
 from typing import List, Optional
 import math
 import numpy as np
@@ -290,7 +291,7 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
                 main_surface = pygame.Surface((WINDOW_W, WINDOW_H))
             else:
                 main_surface = pygame.Surface((VIDEO_W, VIDEO_H))
-            meain_surf_width, main_surf_height = main_surface.get_size()
+            main_surf_width, main_surf_height = main_surface.get_size()
             # computing transformations
             leading_car_track_tile_idx = (
                 list(self.leaderboard[0].tiles_visited)[-1]
@@ -319,7 +320,7 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
             trans = pygame.math.Vector2((scroll_x, scroll_y)).rotate_rad(
                 self.human_render_mode_camera_angle
             )
-            trans = (meain_surf_width / 2 + trans[0], main_surf_height / 2 + trans[1])
+            trans = (main_surf_width / 2 + trans[0], main_surf_height / 2 + trans[1])
 
             self._render_road(
                 main_surface, zoom, trans, self.human_render_mode_camera_angle
@@ -335,9 +336,16 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
 
             # showing stats
             main_surface = pygame.transform.flip(main_surface, False, True)
-            self.cars.render_indicators(
-                self.render_mode, main_surface, meain_surf_width / 4, main_surf_height
-            )
+            h = main_surf_height / 8
+            for i, _ in enumerate(self.cars.get_active()):
+                y_start = i * h
+                polygon = [
+                    (main_surf_width / 4, y_start + h),
+                    (main_surf_width / 4, y_start),
+                    (0, y_start),
+                    (0, y_start + h),
+                ]
+                pygame.draw.polygon(main_surface, (255, 255, 255), polygon, 1)
 
             for car in self.cars.get_active():
                 agent = car.id
@@ -358,7 +366,7 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
                     )
                 car_id_reward_text_rect = car_id_reward_text.get_rect()
                 car_id_reward_text_rect.center = (
-                    meain_surf_width / 22,
+                    main_surf_width / 22,
                     main_surf_height
                     - main_surf_height * 4.2 / 40.0
                     - i * 5 * (main_surf_height / 40.0),
@@ -382,7 +390,7 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
                         )
                     pos_text_rect = pos_text.get_rect()
                     pos_text_rect.center = (
-                        meain_surf_width / 4 - main_surf_height / 13,
+                        main_surf_width / 4 - main_surf_height / 13,
                         main_surf_height
                         - main_surf_height * 4.2 / 40.0
                         - i * 5 * (main_surf_height / 40.0),
@@ -404,7 +412,7 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
                         )
                     pos_text_rect = pos_text.get_rect()
                     pos_text_rect.center = (
-                        meain_surf_width / 4 - meain_surf_width / 30,
+                        main_surf_width / 4 - main_surf_width / 30,
                         main_surf_height
                         - main_surf_height * 4.2 / 40.0
                         - i * 5 * (main_surf_height / 40.0),
@@ -414,14 +422,14 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
                 config_text_surf = car.config.get_surface(mode)
                 config_text_rect = config_text_surf.get_rect()
                 config_text_rect.center = (
-                    meain_surf_width / 80 + config_text_rect.width / 2,
+                    main_surf_width / 80 + config_text_rect.width / 2,
                     main_surf_height
                     - main_surf_height * 0.5 / 40.0
                     - i * 5 * (main_surf_height / 40.0),
                 )
                 main_surface.blit(config_text_surf, config_text_rect)
 
-                x_start = meain_surf_width * 3 / 4 + i % 2 * main_surf_height / 4
+                x_start = main_surf_width * 3 / 4 + i % 2 * main_surf_height / 4
                 y_start = i // 2 * main_surf_height / 4
                 if agent in surfaces:
                     surf = surfaces[agent]
@@ -449,7 +457,7 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
             track_map_surf = self._create_track_map_surface(main_surf_height // 2.7)
             main_surface.blit(
                 track_map_surf,
-                (meain_surf_width / 4 + 20, main_surf_height - main_surf_height / 2.5),
+                (main_surf_width / 4 + 20, main_surf_height - main_surf_height / 2.5),
             )
 
             self.clock.tick(self.metadata["render_fps"])
@@ -500,7 +508,7 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
             surfaces[agent] = pygame.transform.flip(surfaces[agent], False, True)
 
         # showing stats
-        self.cars.render_indicators(self.render_mode, surfaces, surf_width, surf_height)
+        self.cars.render_indicators(surfaces, surf_width, surf_height)
 
         for agent, surface in surfaces.items():
             reward_text = self._obs_reward_font.render(
