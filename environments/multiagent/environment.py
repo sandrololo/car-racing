@@ -176,6 +176,17 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
             for agent in self.possible_agents
         }
         self.human_render_mode_camera_angle: Optional[float] = None
+        self.grass = []
+        for x in range(-15, 15, 2):
+            for y in range(-15, 15, 2):
+                self.grass.append(
+                    [
+                        (GRASS_DIM * x + GRASS_DIM, GRASS_DIM * y + 0),
+                        (GRASS_DIM * x + 0, GRASS_DIM * y + 0),
+                        (GRASS_DIM * x + 0, GRASS_DIM * y + GRASS_DIM),
+                        (GRASS_DIM * x + GRASS_DIM, GRASS_DIM * y + GRASS_DIM),
+                    ]
+                )
         pygame.font.init()
         self._obs_reward_font = pygame.font.Font(
             pygame.font.get_default_font(), STATE_H // 20
@@ -531,20 +542,8 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
         self._draw_colored_polygon(
             surface, field, self.bg_color, zoom, translation, angle, clip=False
         )
-
         # draw grass patches
-        grass = []
-        for x in range(-20, 20, 2):
-            for y in range(-20, 20, 2):
-                grass.append(
-                    [
-                        (GRASS_DIM * x + GRASS_DIM, GRASS_DIM * y + 0),
-                        (GRASS_DIM * x + 0, GRASS_DIM * y + 0),
-                        (GRASS_DIM * x + 0, GRASS_DIM * y + GRASS_DIM),
-                        (GRASS_DIM * x + GRASS_DIM, GRASS_DIM * y + GRASS_DIM),
-                    ]
-                )
-        for poly in grass:
+        for poly in self.grass:
             self._draw_colored_polygon(
                 surface, poly, self.grass_color, zoom, translation, angle
             )
