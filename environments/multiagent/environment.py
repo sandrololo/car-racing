@@ -337,7 +337,7 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
             main_surface = pygame.transform.flip(main_surface, False, True)
             h = main_surf_height / 8
             for i, _ in enumerate(self.cars.get_active()):
-                y_start = i * h
+                y_start = main_surf_height - h - i * h
                 polygon = [
                     (main_surf_width / 4, y_start + h),
                     (main_surf_width / 4, y_start),
