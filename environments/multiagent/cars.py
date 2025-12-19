@@ -493,10 +493,6 @@ class MultiAgentCars:
                     car.fuel_spent = 0.0
                     step_rewards[agent] = car.reward - car.prev_reward
                     car.prev_reward = car.reward
-                    if len(car.tiles_visited) == len(track) or car.lap_count >= 1:
-                        # Termination due to finishing lap
-                        car.terminated = True
-                        info_d[agent]["lap_finished"] = True
                     x, y = car.position
                     if abs(x) > PLAYFIELD or abs(y) > PLAYFIELD:
                         car.terminated = True
