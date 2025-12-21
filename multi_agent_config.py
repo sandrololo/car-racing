@@ -35,11 +35,11 @@ CURRICULUM_CONFIG = CurriculumConfig(
     num_cars_start=1,
     entries=[
         CurriculumStep(num_cars=2, min_reward=600),
-        CurriculumStep(num_cars=3, min_reward=1000),
-        CurriculumStep(num_cars=4, min_reward=1400),
-        CurriculumStep(num_cars=5, min_reward=1900),
-        CurriculumStep(num_cars=6, min_reward=2400),
-        CurriculumStep(num_cars=7, min_reward=2900),
-        CurriculumStep(num_cars=8, min_reward=3300),
+        CurriculumStep(num_cars=3, min_reward=1100),
+        CurriculumStep(num_cars=4, min_reward=1600),
+        CurriculumStep(num_cars=5, min_reward=2100),
+        CurriculumStep(num_cars=6, min_reward=2600),
+        CurriculumStep(num_cars=7, min_reward=3100),
+        CurriculumStep(num_cars=8, min_reward=3600),
     ],
 )
