@@ -133,7 +133,7 @@ class CurriculumConfig:
         num_cars_start: int,
         entries: list[CurriculumStep],
     ):
-        assert all(entry.num_cars < len(car_configs) for entry in entries)
+        assert all(entry.num_cars <= len(car_configs) for entry in entries)
         assert all(
             entries[i].min_reward < entries[i + 1].min_reward
             for i in range(len(entries) - 1)

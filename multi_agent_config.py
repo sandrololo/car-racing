@@ -4,13 +4,13 @@ from environments.multiagent.curriculum import CurriculumConfig, CurriculumStep
 FIRST_TILE_VISITOR_REWARD_FACTOR = 1
 OBS_FRAME_STACK = 4
 NORMALIZE_REWARDS = True
-NUM_ENV_RUNNERS = 5
+NUM_ENV_RUNNERS = 4
 HEAD_FCNET_HIDDENS = [128]
 ROLLOUT_FRAGMENT_LENGTH = 600
 TRAIN_MAX_TIMESTEPS_START = 500
 TRAIN_MAX_TIMESTEPS_PER_EPISODE_INCREASE = 0.08
 TRAIN_GAMMA = 0.98
-TRAIN_NUM_ITERATIONS = 5000
+TRAIN_NUM_ITERATIONS = 8000
 MINI_BATCH_SIZE = 256
 TRAIN_CLIP_PARAM = 0.1
 TRAIN_NUM_EPOCHS = 5
@@ -35,8 +35,11 @@ CURRICULUM_CONFIG = CurriculumConfig(
     num_cars_start=1,
     entries=[
         CurriculumStep(num_cars=2, min_reward=600),
-        CurriculumStep(num_cars=3, min_reward=900),
-        CurriculumStep(num_cars=4, min_reward=1200),
-        CurriculumStep(num_cars=5, min_reward=1500),
+        CurriculumStep(num_cars=3, min_reward=1000),
+        CurriculumStep(num_cars=4, min_reward=1400),
+        CurriculumStep(num_cars=5, min_reward=1900),
+        CurriculumStep(num_cars=6, min_reward=2400),
+        CurriculumStep(num_cars=7, min_reward=2900),
+        CurriculumStep(num_cars=8, min_reward=3300),
     ],
 )
