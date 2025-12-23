@@ -526,6 +526,7 @@ class MultiAgentCars:
         angle: float,
         tyre_marks: bool = True,
         draw_number: bool = False,
+        close_to_position: Optional[tuple[float, float]] = None,
     ):
         if tyre_marks:
             for car in self._cars.values():
@@ -533,9 +534,13 @@ class MultiAgentCars:
                     car.draw_tyre_marks(surface, zoom, angle, trans)
         for car in self._cars.values():
             if car.active and not car.terminated and not car.truncated:
-                car.draw(surface, zoom, trans, angle, False)
-                if draw_number:
-                    car.draw_number(surface, zoom, trans, angle)
+                if close_to_position is None or (
+                    abs(car.position[0] - close_to_position[0]) < 50
+                    and abs(car.position[1] - close_to_position[1]) < 50
+                ):
+                    car.draw(surface, zoom, trans, angle, False)
+                    if draw_number:
+                        car.draw_number(surface, zoom, trans, angle)
 
     def render_indicators(
         self,

@@ -493,15 +493,20 @@ class MultiAgentCarRacingEnv(MultiAgentEnv):
         assert len(self.cars.get_active()) > 0
         for agent, surface in surfaces.items():
             # computing transformations
-            angle = -self.cars.get(agent).angle
-            trans = self.cars.get(agent).get_translation(
-                surface_zoom, surf_width, surf_height
-            )
+            car = self.cars.get(agent)
+            angle = -car.angle
+            trans = car.get_translation(surface_zoom, surf_width, surf_height)
 
             self._render_road(surface, surface_zoom, trans, angle)
 
             self.cars.draw(
-                surface, surface_zoom, trans, angle, tyre_marks=False, draw_number=False
+                surface,
+                surface_zoom,
+                trans,
+                angle,
+                tyre_marks=False,
+                draw_number=False,
+                close_to_position=car.position,
             )
         for agent in surfaces.keys():
             surfaces[agent] = pygame.transform.flip(surfaces[agent], False, True)
