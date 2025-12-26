@@ -125,6 +125,12 @@ class CurriculumStep:
         self.num_cars = num_cars
         self.min_reward = min_reward
 
+    def to_dict(self):
+        return {"num_cars": self.num_cars, "min_reward": self.min_reward}
+
+    def __str__(self):
+        return f"CurriculumStep(num_cars={self.num_cars}, min_reward={self.min_reward})"
+
 
 class CurriculumConfig:
     def __init__(
@@ -144,3 +150,13 @@ class CurriculumConfig:
         )
         self.num_cars_start = num_cars_start
         self.entries = sorted(entries, key=lambda entry: entry.num_cars, reverse=True)
+
+    def to_dict(self):
+        return {
+            "num_cars_start": self.num_cars_start,
+            "entries": [entry.to_dict() for entry in self.entries],
+        }
+
+    def __str__(self):
+        entries_str = ", ".join(str(entry) for entry in self.entries)
+        return f"CurriculumConfig(num_cars_start={self.num_cars_start}, entries=[{entries_str}])"
