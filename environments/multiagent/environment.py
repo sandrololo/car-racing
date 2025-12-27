@@ -102,8 +102,7 @@ class FrictionAndCrashDetector(Box2D.b2.contactListener):
                                 reward *= self.first_tile_visitor_reward_factor
                             env_car.reward += reward
                             if (
-                                tile.idx == 0
-                                and len(env_car.tiles_visited) / len(self.env.track)
+                                len(env_car.tiles_visited) / len(self.env.track)
                                 > self.lap_complete_percent
                             ):
                                 env_car.new_lap()
