@@ -3,6 +3,13 @@
 
 This repository contains a multi-agent version of the original [CarRacing environment](https://gymnasium.farama.org/environments/box2d/car_racing/).
 
+## Results
+### Single Agent
+
+<img width="600" height="400" alt="Single Agent Training Result" src="https://github.com/user-attachments/assets/a3808901-e726-466c-a85f-991f1c324c09" />
+
+Training result using RLlib with the PPO algorithm and the original CarRacing environment.
+
 ## Installation
 ### Swig
 Swig is required to install the *box2d* feature for gymnasium environments.
