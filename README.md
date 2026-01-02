@@ -10,7 +10,7 @@ You can create the base environment directly and pass a config dict to control e
 - `car_configs` (list[CarConfig]): per-car setup; length should be at least `num_cars`.
 - `lap_complete_percent` (float): percentage of total tiles visited in order for a lap to be considered complete.
 - `first_tile_visitor_reward_factor` (float): scales the reward for the first agent that reaches a new tile.
-- `render_mode` (str | None): one of `"human"`, `"state_pixels"`, `"video"`.
+- `render_mode` (str): one of `"human"`, `"state_pixels"`, `"video"`.
 
 Example including the curriculum configuration used in training:
 
