@@ -1,7 +1,8 @@
 # Multi Agent Car Racing Environment
 <img width="1200" height="631" alt="Multi-agent CarRacing environment" src="https://github.com/user-attachments/assets/6306134e-f56c-47b2-aaf6-9e1dff2bf240" />
 
-This repository contains a multi-agent version of the original [CarRacing environment](https://gymnasium.farama.org/environments/box2d/car_racing/).
+This repository contains a multi-agent version of the original [CarRacing environment](https://gymnasium.farama.org/environments/box2d/car_racing/). It is modified to support multiple agents while remaining as close as possible
+to the original. This ensures that the existing dynamics and behavior of the environment are preserved. Consequently, the algorithms and techniques used to train the single-agent environment can be reused with minimal modifications.
 
 ## Using the environment
 You can create the base environment directly and pass a config dict to control every built-in option. The environment accepts the following keys:
@@ -78,7 +79,7 @@ pipenv shell
 ```
 
 ## Training
-It is recommended to run the training on a machine with 8 corss and one available GPU. Weights-and-Biases logging
+It is recommended to run the training on a machine with 8 cores and one available GPU. Weights-and-Biases logging
 is turned on per default, therefore being logged into wandb is a prerequisite.
 
 ### Single Agent
