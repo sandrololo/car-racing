@@ -3,6 +3,56 @@
 
 This repository contains a multi-agent version of the original [CarRacing environment](https://gymnasium.farama.org/environments/box2d/car_racing/).
 
+## Using the environment
+You can create the base environment directly and pass a config dict to control every built-in option. The environment accepts the following keys:
+- `num_cars` (int): number of active agents (max 8).
+- `car_configs` (list[CarConfig]): per-car setup; length should be at least `num_cars`.
+- `lap_complete_percent` (float): percentage of total tiles visited in order for a lap to be considered complete.
+- `first_tile_visitor_reward_factor` (float): scales the reward for the first agent that reaches a new tile.
+- `render_mode` (str | None): one of `"human"`, `"state_pixels"`, `"video"`.
+
+Example including the curriculum configuration used in training:
+
+```python
+from environments.multiagent import MultiAgentCarRacingEnv
+from environments.multiagent.cars import CarConfig, EnginePower, TyreType
+from environments.multiagent.curriculum import CurriculumConfig, CurriculumStep
+
+car_configs = [
+	CarConfig(EnginePower.MEDIUM, TyreType.MEDIUM),
+	CarConfig(EnginePower.MEDIUM, TyreType.MEDIUM),
+	CarConfig(EnginePower.MEDIUM, TyreType.MEDIUM),
+	CarConfig(EnginePower.MEDIUM, TyreType.MEDIUM),
+	CarConfig(EnginePower.MEDIUM, TyreType.MEDIUM),
+	CarConfig(EnginePower.MEDIUM, TyreType.MEDIUM),
+	CarConfig(EnginePower.MEDIUM, TyreType.MEDIUM),
+	CarConfig(EnginePower.MEDIUM, TyreType.MEDIUM),
+]
+
+curriculum_config = CurriculumConfig(
+	car_configs=car_configs,
+	num_cars_start=1,
+	entries=[
+		CurriculumStep(num_cars=2, min_reward=650),
+		CurriculumStep(num_cars=6, min_reward=1100),
+	],
+)
+
+env = MultiAgentCarRacingEnv(
+	config={
+		"num_cars": 1,
+		"car_configs": car_configs,
+		"lap_complete_percent": 0.95,
+		"first_tile_visitor_reward_factor": 1.0,
+		"render_mode": "state_pixels",  # "human" for interactive window
+		# Optional: curriculum, forwarded to callbacks if you use them
+		"curriculum_config": curriculum_config,
+	}
+)
+```
+
+Common wrappers used in training (see `train-multi-ppo-curriculum.py`) can be applied on top: `GrayscaleObservation`, `FrameStackObservation`, `NormalizeObservation`, `NormalizeReward`, `IncreasingTimeLimit`, and `RecordVideo`.
+
 ## Results
 ### Single Agent
 
