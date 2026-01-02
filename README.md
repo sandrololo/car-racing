@@ -67,13 +67,25 @@ Swig is the abbreviation of *Simplified Wrapper and Interface Generator*, it can
 
 [](https://www.dev2qa.com/how-to-install-swig-on-macos-linux-and-windows/) (On Windows make sure to download **swig**win-xxx which includes a prebuild executable)
 
+### Python Environment
+The recommended approach is to use Pipenv to create a virtual environment and install the dependencies.
+Otherwise, the necessary packages are defined in `Pipfile`.
+
+```bash
+pip install pipenv
+pipenv install
+pipenv shell
+```
+
 ## Training
-It is recommended to run the training in a docker container on a machine with one available GPU. The WANDB_API_KEY environment variable needs to be set. The following commands start the training process:
+It is recommended to run the training on a machine with 8 corss and one available GPU. Weights-and-Biases logging
+is turned on per default, therefore being logged into wandb is a prerequisite.
+
 ### Single Agent
-`docker build -t rllib-car-racing-training . && docker run --gpus=1 --shm-size=9.98gb --env WANDB_API_KEY=\"$WANDB_API_KEY\" --detach rllib-car-racing-training python train-single-ppo.py`
+`python train-single-ppo.py`
 
 ### Multi Agent
-`docker build -t rllib-car-racing-training . && docker run --gpus=1 --shm-size=9.98gb --env WANDB_API_KEY=\"$WANDB_API_KEY\" --detach rllib-car-racing-training python train-multi-ppo.py`
+`python train-multi-ppo.py`
 
 ### Multi Agent with Curriculum
-`docker build -t rllib-car-racing-training . && docker run --gpus=1 --shm-size=9.98gb --env WANDB_API_KEY=\"$WANDB_API_KEY\" --detach rllib-car-racing-training python train-multi-ppo-curriculum.py`
+`python train-multi-ppo-curriculum.py`
