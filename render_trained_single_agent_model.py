@@ -7,7 +7,7 @@ from ray.rllib.algorithms.ppo import PPO
 from environments.singleagent.environment import SingleAgentCarRacingEnv
 import single_agent_config
 
-CHECKPOINT_NAME = "checkpoint_PPO_SingleAgentCarRacingEnv_78ee9_00000"
+CHECKPOINT_NAME = "checkpoint_PPO_SingleAgentCarRacingEnv_febbe_00000"
 
 run = wandb.init()
 artifact = run.use_artifact(
@@ -46,7 +46,7 @@ def render_model():
         total_reward += reward
         env.render()
 
-        time.sleep(0.01)  # Slower for visibility
+        time.sleep(0.005)  # Slower for visibility
 
     print(f"\nCompleted! Total reward: {total_reward:.2f}")
     env.close()
