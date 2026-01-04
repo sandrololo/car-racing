@@ -57,9 +57,15 @@ Common wrappers used in training (see `train-multi-ppo-curriculum.py`) can be ap
 ## Results
 ### Single Agent
 
+<img width="600" height="371" alt="image" src="https://github.com/user-attachments/assets/2e6b8adf-a06c-404e-aa2b-73c85a95b3e0" />
+
 <img width="600" height="400" alt="Single Agent Training Result" src="https://github.com/user-attachments/assets/a3808901-e726-466c-a85f-991f1c324c09" />
 
-Training result using RLlib with the PPO algorithm and the original CarRacing environment.
+Training result using RLlib with the PPO algorithm and the original CarRacing environment. Another video can be found [here](https://github.com/user-attachments/assets/8f3fdaf5-1c18-4038-bb15-1740ffcb8b06) 
+
+
+
+
 
 ## Installation
 ### Swig
